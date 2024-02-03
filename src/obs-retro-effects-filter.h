@@ -17,7 +17,9 @@ static void retro_effects_filter_video_render(void *data, gs_effect_t *effect);
 static obs_properties_t *retro_effects_filter_properties(void *data);
 static void retro_effects_filter_video_tick(void *data, float seconds);
 static void retro_effects_filter_defaults(obs_data_t *settings);
-static void get_input_source(retro_effects_filter_data_t *filter);
-static void draw_output(retro_effects_filter_data_t *filter);
 static void retro_effects_render_filter(retro_effects_filter_data_t *filter);
 static void load_output_effect(retro_effects_filter_data_t *filter);
+
+static bool filter_type_modified(void *data, obs_properties_t *props,
+				 obs_property_t *p, obs_data_t *settings);
+static void load_filter(retro_effects_filter_data_t *filter, int old_type);
