@@ -26,13 +26,15 @@ void interlace_destroy(retro_effects_filter_data_t *filter)
 }
 
 void interlace_filter_update(retro_effects_filter_data_t *data,
-			      obs_data_t *settings)
+			     obs_data_t *settings)
 {
 	interlace_filter_data_t *filter = data->active_filter_data;
 
-	filter->thickness = (int)obs_data_get_int(settings, "interlace_thickness");
+	filter->thickness =
+		(int)obs_data_get_int(settings, "interlace_thickness");
 	float br = 1.0f - (float)obs_data_get_double(
-			   settings, "interlace_brightness_reduction") / 100.0f;
+				  settings, "interlace_brightness_reduction") /
+				  100.0f;
 	float br_alpha = obs_data_get_bool(settings, "interlace_reduce_alpha")
 				 ? br
 				 : 1.0f;
@@ -46,16 +48,16 @@ void interlace_filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "interlace_thickness", 1);
 	obs_data_set_default_double(settings, "interlace_brightness_reduction",
-				   0.0);
+				    0.0);
 	obs_data_set_default_bool(settings, "interlace_reduce_alpha", false);
 }
 
 void interlace_filter_properties(retro_effects_filter_data_t *data,
-				  obs_properties_t *props)
+				 obs_properties_t *props)
 {
-	obs_properties_add_int_slider(
-		props, "interlace_thickness",
-		"Interlace Thickness", 1, 50, 1);
+	UNUSED_PARAMETER(data);
+	obs_properties_add_int_slider(props, "interlace_thickness",
+				      "Interlace Thickness", 1, 50, 1);
 	obs_properties_add_float_slider(props, "interlace_brightness_reduction",
 					"Brightness Reduction", 0.0, 100.0,
 					0.1);
@@ -85,9 +87,11 @@ void interlace_filter_video_render(retro_effects_filter_data_t *data)
 	gs_texrender_t *tmp = base->output_texrender;
 	base->output_texrender = filter->buffer_texrender;
 	filter->buffer_texrender = tmp;
-	gs_texture_t *prior_frame = gs_texrender_get_texture(filter->buffer_texrender);
+	gs_texture_t *prior_frame =
+		gs_texrender_get_texture(filter->buffer_texrender);
 
-	base->output_texrender = create_or_reset_texrender(base->output_texrender);
+	base->output_texrender =
+		create_or_reset_texrender(base->output_texrender);
 
 	if (filter->param_uv_size) {
 		struct vec2 uv_size;
@@ -106,7 +110,8 @@ void interlace_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_texture(filter->param_prior_frame, prior_frame);
 	}
 	if (filter->param_thickness) {
-		gs_effect_set_float(filter->param_thickness, (float)filter->thickness);
+		gs_effect_set_float(filter->param_thickness,
+				    (float)filter->thickness);
 	}
 	if (filter->param_brightness_reduction) {
 		gs_effect_set_vec4(filter->param_brightness_reduction,
@@ -156,8 +161,7 @@ static void load_interlace_effect(interlace_filter_data_t *filter)
 	dstr_free(&filename);
 
 	obs_enter_graphics();
-	filter->effect_interlace =
-		gs_effect_create(shader_text, NULL, &errors);
+	filter->effect_interlace = gs_effect_create(shader_text, NULL, &errors);
 	obs_leave_graphics();
 
 	bfree(shader_text);
@@ -186,7 +190,8 @@ static void load_interlace_effect(interlace_filter_data_t *filter)
 				filter->param_frame = param;
 			} else if (strcmp(info.name, "thickness") == 0) {
 				filter->param_thickness = param;
-			} else if (strcmp(info.name, "brightness_reduction") == 0) {
+			} else if (strcmp(info.name, "brightness_reduction") ==
+				   0) {
 				filter->param_brightness_reduction = param;
 			}
 		}

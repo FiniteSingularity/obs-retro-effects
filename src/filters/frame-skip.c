@@ -1,15 +1,16 @@
 #include "frame-skip.h"
 #include "../obs-utils.h"
 
-void frame_skip_create(retro_effects_filter_data_t* filter)
+void frame_skip_create(retro_effects_filter_data_t *filter)
 {
-	frame_skip_filter_data_t *data = bzalloc(sizeof(frame_skip_filter_data_t));
+	frame_skip_filter_data_t *data =
+		bzalloc(sizeof(frame_skip_filter_data_t));
 	data->frames_skipped = 0;
 	filter->active_filter_data = data;
 	frame_skip_set_functions(filter);
 }
 
-void frame_skip_destroy(retro_effects_filter_data_t* filter)
+void frame_skip_destroy(retro_effects_filter_data_t *filter)
 {
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "skip_frames");
@@ -26,7 +27,7 @@ void frame_skip_filter_update(retro_effects_filter_data_t *data,
 	filter->frames_to_skip = (int)obs_data_get_int(settings, "skip_frames");
 }
 
-void frame_skip_filter_defaults(obs_data_t* settings)
+void frame_skip_filter_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "skip_frames", 0);
 }
@@ -34,6 +35,7 @@ void frame_skip_filter_defaults(obs_data_t* settings)
 void frame_skip_filter_properties(retro_effects_filter_data_t *data,
 				  obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	blog(LOG_INFO, "Frame Skip Properties Called");
 	obs_properties_add_int_slider(
 		props, "skip_frames",
