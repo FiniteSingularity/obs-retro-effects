@@ -31,7 +31,7 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	// structure.
 	retro_effects_filter_data_t *filter =
 		bzalloc(sizeof(retro_effects_filter_data_t));
-	
+
 	filter->base = bzalloc(sizeof(base_filter_data_t));
 	filter->base->context = source;
 	filter->base->input_texrender =
@@ -54,7 +54,6 @@ static void retro_effects_filter_destroy(void *data)
 {
 	// This function should clear up all memory the plugin uses.
 	retro_effects_filter_data_t *filter = data;
-
 
 	obs_enter_graphics();
 	if (filter->base->input_texrender) {
@@ -121,7 +120,7 @@ static void retro_effects_filter_video_render(void *data, gs_effect_t *effect)
 	if (filter->filter_video_render) {
 		filter->filter_video_render(filter);
 	}
-	
+
 	// 3. Draw result (filter->output_texrender) to source
 	draw_output(filter);
 	filter->base->rendered = true;
@@ -139,14 +138,15 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 		props, "filter_type", obs_module_text("RetroEffects.Filter"),
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
-	obs_property_list_add_int(filter_list,
-		obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
-		RETRO_FILTER_FRAME_SKIP);
 	obs_property_list_add_int(
-		filter_list, obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
-		RETRO_FILTER_INTERLACE);
+		filter_list, obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
+		RETRO_FILTER_FRAME_SKIP);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
+				  RETRO_FILTER_INTERLACE);
 
-	obs_property_set_modified_callback2(filter_list, filter_type_modified, data);
+	obs_property_set_modified_callback2(filter_list, filter_type_modified,
+					    data);
 
 	if (filter->filter_properties) {
 		filter->filter_properties(filter, props);
@@ -158,11 +158,16 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 static bool filter_type_modified(void *data, obs_properties_t *props,
 				 obs_property_t *p, obs_data_t *settings)
 {
-	retro_effects_filter_data_t *filter = data;
+	// retro_effects_filter_data_t *filter = data;
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(props);
+	UNUSED_PARAMETER(p);
+	UNUSED_PARAMETER(settings);
+
 	return false;
 }
 
-static void load_filter(retro_effects_filter_data_t* filter, int old_type)
+static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 {
 	if (old_type != 0) {
 		// Clear out old settings.
