@@ -28,6 +28,10 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/obs-retro-effects.h
 	src/obs-utils.c
 	src/obs-utils.h
+	src/filters/frame-skip.c
+	src/filters/frame-skip.h
+	src/filters/interlace.c
+	src/filters/interlace.h
 	src/version.h)
 
 if(BUILD_OUT_OF_TREE)

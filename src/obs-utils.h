@@ -7,6 +7,8 @@
 #include <util/platform.h>
 
 #include <stdio.h>
+#include "obs-retro-effects.h"
+
 
 extern gs_texrender_t *create_or_reset_texrender(gs_texrender_t *render);
 extern void set_blending_parameters();
@@ -18,3 +20,5 @@ extern char *load_shader_from_file(const char *file_name);
 extern void setting_visibility(const char *prop_name, bool visible,
 			       obs_properties_t *props);
 extern void texrender_set_texture(gs_texture_t *source, gs_texrender_t *dest);
+extern void get_input_source(base_filter_data_t *filter);
+extern void draw_output(retro_effects_filter_data_t *filter);

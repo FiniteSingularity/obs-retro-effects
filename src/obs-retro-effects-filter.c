@@ -1,5 +1,7 @@
 #include "obs-retro-effects-filter.h"
 #include "obs-retro-effects.h"
+#include "filters/frame-skip.h"
+#include "filters/interlace.h"
 
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
@@ -29,10 +31,9 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	// structure.
 	retro_effects_filter_data_t *filter =
 		bzalloc(sizeof(retro_effects_filter_data_t));
-
-	filter->context = source;
-
+	
 	filter->base = bzalloc(sizeof(base_filter_data_t));
+	filter->base->context = source;
 	filter->base->input_texrender =
 		create_or_reset_texrender(filter->base->input_texrender);
 	filter->base->output_texrender =
@@ -41,6 +42,7 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	filter->base->rendered = false;
 	filter->base->rendering = false;
 	filter->frames_skipped = 0;
+	filter->initial_load = true;
 
 	load_output_effect(filter);
 	obs_source_update(source, settings);
@@ -66,6 +68,8 @@ static void retro_effects_filter_destroy(void *data)
 	}
 	obs_leave_graphics();
 
+	filter->filter_destroy(filter);
+
 	bfree(filter->base);
 	bfree(filter);
 }
@@ -84,10 +88,22 @@ static uint32_t retro_effects_filter_height(void *data)
 
 static void retro_effects_filter_update(void *data, obs_data_t *settings)
 {
-	// Called after UI is updated, should assign new UI values to
-	// data structure pointers/values/etc..
 	retro_effects_filter_data_t *filter = data;
-	filter->frames_to_skip = (int)obs_data_get_int(settings, "skip_frames");
+
+	int new_active_filter = (int)obs_data_get_int(settings, "filter_type");
+	int old_active_filter = filter->active_filter;
+	filter->active_filter = new_active_filter;
+	if (filter->initial_load) {
+		load_filter(filter, 0);
+		filter->initial_load = false;
+	} else if (new_active_filter != old_active_filter) {
+		load_filter(filter, old_active_filter);
+		obs_source_update_properties(filter->base->context);
+	}
+
+	if (filter->filter_update) {
+		filter->filter_update(filter, settings);
+	}
 }
 
 static void retro_effects_filter_video_render(void *data, gs_effect_t *effect)
@@ -102,22 +118,10 @@ static void retro_effects_filter_video_render(void *data, gs_effect_t *effect)
 
 	filter->base->rendering = true;
 
-	if (filter->frames_skipped < filter->frames_to_skip) {
-		filter->frames_skipped += 1;
-	} else {
-		get_input_source(filter);
-		if (!filter->base->input_texture_generated) {
-			filter->base->rendering = false;
-			obs_source_skip_video_filter(filter->context);
-			return;
-		}
-		// 2. Render the filter
-		// Call a rendering function, e.g.:
-		retro_effects_render_filter(filter);
-		filter->frames_skipped = 0;
+	if (filter->filter_video_render) {
+		filter->filter_video_render(filter);
 	}
-
-
+	
 	// 3. Draw result (filter->output_texrender) to source
 	draw_output(filter);
 	filter->base->rendered = true;
@@ -131,112 +135,75 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 	obs_properties_t *props = obs_properties_create();
 	obs_properties_set_param(props, filter, NULL);
 
-	obs_properties_add_int_slider(
-		props, "skip_frames",
-		obs_module_text("RetroEffects.FrameSkip.NumFrames"), 0, 600, 1);
+	obs_property_t *filter_list = obs_properties_add_list(
+		props, "filter_type", obs_module_text("RetroEffects.Filter"),
+		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+
+	obs_property_list_add_int(filter_list,
+		obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
+		RETRO_FILTER_FRAME_SKIP);
+	obs_property_list_add_int(
+		filter_list, obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
+		RETRO_FILTER_INTERLACE);
+
+	obs_property_set_modified_callback2(filter_list, filter_type_modified, data);
+
+	if (filter->filter_properties) {
+		filter->filter_properties(filter, props);
+	}
 
 	return props;
 }
 
+static bool filter_type_modified(void *data, obs_properties_t *props,
+				 obs_property_t *p, obs_data_t *settings)
+{
+	retro_effects_filter_data_t *filter = data;
+	return false;
+}
+
+static void load_filter(retro_effects_filter_data_t* filter, int old_type)
+{
+	if (old_type != 0) {
+		// Clear out old settings.
+		// Destroy old type data object.
+		if (filter->filter_destroy) {
+			filter->filter_destroy(filter);
+		}
+	}
+	// load in new data object.
+	switch (filter->active_filter) {
+	case RETRO_FILTER_FRAME_SKIP:
+		frame_skip_create(filter);
+		break;
+	case RETRO_FILTER_INTERLACE:
+		interlace_create(filter);
+		break;
+	}
+}
+
 static void retro_effects_filter_video_tick(void *data, float seconds)
 {
-	UNUSED_PARAMETER(seconds);
 	retro_effects_filter_data_t *filter = data;
 
-	obs_source_t *target = obs_filter_get_target(filter->context);
+	obs_source_t *target = obs_filter_get_target(filter->base->context);
 	if (!target) {
 		return;
 	}
 	filter->base->width = (uint32_t)obs_source_get_base_width(target);
 	filter->base->height = (uint32_t)obs_source_get_base_height(target);
 
+	if (filter->filter_video_tick) {
+		filter->filter_video_tick(filter, seconds);
+	}
+
 	filter->base->rendered = false;
 }
 
 static void retro_effects_filter_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_int(settings, "example_int", 10);
-}
-
-static void get_input_source(retro_effects_filter_data_t *filter)
-{
-	// Use the OBS default effect file as our effect.
-	gs_effect_t *pass_through = obs_get_base_effect(OBS_EFFECT_DEFAULT);
-
-	// Set up our color space info.
-	const enum gs_color_space preferred_spaces[] = {
-		GS_CS_SRGB,
-		GS_CS_SRGB_16F,
-		GS_CS_709_EXTENDED,
-	};
-
-	const enum gs_color_space source_space = obs_source_get_color_space(
-		obs_filter_get_target(filter->context),
-		OBS_COUNTOF(preferred_spaces), preferred_spaces);
-
-	const enum gs_color_format format =
-		gs_get_format_from_space(source_space);
-
-	// Set up our input_texrender to catch the output texture.
-	filter->base->input_texrender =
-		create_or_reset_texrender(filter->base->input_texrender);
-
-	// Start the rendering process with our correct color space params,
-	// And set up your texrender to recieve the created texture.
-	if (obs_source_process_filter_begin_with_color_space(
-		    filter->context, format, source_space,
-		    OBS_NO_DIRECT_RENDERING) &&
-	    gs_texrender_begin(filter->base->input_texrender,
-			       filter->base->width, filter->base->height)) {
-
-		set_blending_parameters();
-		gs_ortho(0.0f, (float)filter->base->width, 0.0f,
-			 (float)filter->base->height, -100.0f, 100.0f);
-		// The incoming source is pre-multiplied alpha, so use the
-		// OBS default effect "DrawAlphaDivide" technique to convert
-		// the colors back into non-pre-multiplied space.
-		obs_source_process_filter_tech_end(
-			filter->context, pass_through, filter->base->width,
-			filter->base->height, "DrawAlphaDivide");
-		gs_texrender_end(filter->base->input_texrender);
-		gs_blend_state_pop();
-		filter->base->input_texture_generated = true;
-	}
-}
-
-static void draw_output(retro_effects_filter_data_t *filter)
-{
-	const enum gs_color_space preferred_spaces[] = {
-		GS_CS_SRGB,
-		GS_CS_SRGB_16F,
-		GS_CS_709_EXTENDED,
-	};
-
-	const enum gs_color_space source_space = obs_source_get_color_space(
-		obs_filter_get_target(filter->context),
-		OBS_COUNTOF(preferred_spaces), preferred_spaces);
-
-	const enum gs_color_format format =
-		gs_get_format_from_space(source_space);
-
-	if (!obs_source_process_filter_begin_with_color_space(
-		    filter->context, format, source_space,
-		    OBS_NO_DIRECT_RENDERING)) {
-		return;
-	}
-
-	gs_texture_t *texture =
-		gs_texrender_get_texture(filter->base->output_texrender);
-	gs_effect_t *pass_through = filter->base->output_effect;
-
-	if (filter->base->param_output_image) {
-		gs_effect_set_texture(filter->base->param_output_image,
-				      texture);
-	}
-
-	obs_source_process_filter_end(filter->context, pass_through,
-				      filter->base->width,
-				      filter->base->height);
+	obs_data_set_default_int(settings, "filter_type",
+				 RETRO_FILTER_FRAME_SKIP);
 }
 
 static void retro_effects_render_filter(retro_effects_filter_data_t *filter)

@@ -158,3 +158,86 @@ void texrender_set_texture(gs_texture_t *source, gs_texrender_t *dest)
 	}
 	gs_blend_state_pop();
 }
+
+void get_input_source(base_filter_data_t *base)
+{
+	// Use the OBS default effect file as our effect.
+	gs_effect_t *pass_through = obs_get_base_effect(OBS_EFFECT_DEFAULT);
+
+	// Set up our color space info.
+	const enum gs_color_space preferred_spaces[] = {
+		GS_CS_SRGB,
+		GS_CS_SRGB_16F,
+		GS_CS_709_EXTENDED,
+	};
+
+	const enum gs_color_space source_space = obs_source_get_color_space(
+		obs_filter_get_target(base->context),
+		OBS_COUNTOF(preferred_spaces), preferred_spaces);
+
+	const enum gs_color_format format =
+		gs_get_format_from_space(source_space);
+
+	// Set up our input_texrender to catch the output texture.
+	base->input_texrender =
+		create_or_reset_texrender(base->input_texrender);
+
+	// Start the rendering process with our correct color space params,
+	// And set up your texrender to recieve the created texture.
+	if (obs_source_process_filter_begin_with_color_space(
+		    base->context, format, source_space,
+		    OBS_NO_DIRECT_RENDERING) &&
+	    gs_texrender_begin(base->input_texrender,
+			       base->width, base->height)) {
+
+		set_blending_parameters();
+		gs_ortho(0.0f, (float)base->width, 0.0f,
+			 (float)base->height, -100.0f, 100.0f);
+		// The incoming source is pre-multiplied alpha, so use the
+		// OBS default effect "DrawAlphaDivide" technique to convert
+		// the colors back into non-pre-multiplied space.
+		obs_source_process_filter_tech_end(base->context,
+						   pass_through,
+						   base->width,
+						   base->height,
+						   "DrawAlphaDivide");
+		gs_texrender_end(base->input_texrender);
+		gs_blend_state_pop();
+		base->input_texture_generated = true;
+	}
+}
+
+void draw_output(retro_effects_filter_data_t *filter)
+{
+	const enum gs_color_space preferred_spaces[] = {
+		GS_CS_SRGB,
+		GS_CS_SRGB_16F,
+		GS_CS_709_EXTENDED,
+	};
+
+	const enum gs_color_space source_space = obs_source_get_color_space(
+		obs_filter_get_target(filter->base->context),
+		OBS_COUNTOF(preferred_spaces), preferred_spaces);
+
+	const enum gs_color_format format =
+		gs_get_format_from_space(source_space);
+
+	if (!obs_source_process_filter_begin_with_color_space(
+		    filter->base->context, format, source_space,
+		    OBS_NO_DIRECT_RENDERING)) {
+		return;
+	}
+
+	gs_texture_t *texture =
+		gs_texrender_get_texture(filter->base->output_texrender);
+	gs_effect_t *pass_through = filter->base->output_effect;
+
+	if (filter->base->param_output_image) {
+		gs_effect_set_texture(filter->base->param_output_image,
+				      texture);
+	}
+
+	obs_source_process_filter_end(filter->base->context, pass_through,
+				      filter->base->width,
+				      filter->base->height);
+}
