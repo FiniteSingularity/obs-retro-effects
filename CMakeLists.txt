@@ -28,6 +28,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/obs-retro-effects.h
 	src/obs-utils.c
 	src/obs-utils.h
+	src/filters/chromatic-aberration.c
+	src/filters/chromatic-aberration.h
 	src/filters/frame-skip.c
 	src/filters/frame-skip.h
 	src/filters/interlace.c

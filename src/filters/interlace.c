@@ -17,9 +17,9 @@ void interlace_destroy(retro_effects_filter_data_t *filter)
 	if (data->effect_interlace) {
 		gs_effect_destroy(data->effect_interlace);
 	}
-	//if (data->source_mask_texrender) {
-	//	gs_texrender_destroy(data->source_mask_texrender);
-	//}
+	if (data->buffer_texrender) {
+		gs_texrender_destroy(data->buffer_texrender);
+	}
 	obs_leave_graphics();
 	bfree(filter->active_filter_data);
 	filter->active_filter_data = NULL;
