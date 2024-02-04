@@ -2,6 +2,7 @@
 #include "obs-retro-effects.h"
 #include "filters/frame-skip.h"
 #include "filters/interlace.h"
+#include "filters/chromatic-aberration.h"
 
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
@@ -138,6 +139,9 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 		props, "filter_type", obs_module_text("RetroEffects.Filter"),
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_CA_LABEL),
+				  RETRO_FILTER_CA);
 	obs_property_list_add_int(
 		filter_list, obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
 		RETRO_FILTER_FRAME_SKIP);
@@ -178,6 +182,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 	}
 	// load in new data object.
 	switch (filter->active_filter) {
+	case RETRO_FILTER_CA:
+		chromatic_aberration_create(filter);
+		break;
 	case RETRO_FILTER_FRAME_SKIP:
 		frame_skip_create(filter);
 		break;

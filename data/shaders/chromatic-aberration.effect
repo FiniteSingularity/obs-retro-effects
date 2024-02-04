@@ -1,0 +1,72 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float3 channel_offsets;
+uniform float3 channel_offset_cos_angles;
+uniform float3 channel_offset_sin_angles;
+uniform float scale;
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	
+	float4 red   = image.Sample(textureSampler, (coord - float2(channel_offsets.r * channel_offset_cos_angles.r, channel_offsets.r * channel_offset_sin_angles.r)) / uv_size);
+	float4 green = image.Sample(textureSampler, (coord - float2(channel_offsets.g * channel_offset_cos_angles.g, channel_offsets.g * channel_offset_sin_angles.g)) / uv_size);
+	float4 blue  = image.Sample(textureSampler, (coord - float2(channel_offsets.b * channel_offset_cos_angles.b, channel_offsets.b * channel_offset_sin_angles.b)) / uv_size);
+
+	return float4(red.r, green.g, blue.b, red.a * 0.34 + green.a * 0.33 + blue.a * 0.33);
+}
+
+float4 mainImageLens(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float dist = (coord - uv_size * 0.5) * scale;
+	
+	float2 diff = dist * normalize(v_in.uv - float2(0.5, 0.5));
+	
+	//float2 diff = scale * (coord - uv_size * 0.5);
+
+	float4 red = image.Sample(textureSampler, (coord - channel_offsets.r * diff) / uv_size);
+	float4 green = image.Sample(textureSampler, (coord - channel_offsets.g * diff) / uv_size);
+	float4 blue = image.Sample(textureSampler, (coord - channel_offsets.b * diff) / uv_size);
+	
+	return float4(red.r, green.g, blue.b, red.a * 0.34 + green.a * 0.33 + blue.a * 0.33);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
+
+technique DrawLens
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageLens(v_in);
+	}
+}
