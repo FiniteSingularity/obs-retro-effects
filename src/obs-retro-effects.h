@@ -13,6 +13,8 @@
 #define RETRO_FILTER_INTERLACE_LABEL "RetroEffects.Interlace"
 #define RETRO_FILTER_CA 3
 #define RETRO_FILTER_CA_LABEL "RetroEffects.ChromaticAberration"
+#define RETRO_FILTER_POSTERIZE 4
+#define RETRO_FILTER_POSTERIZE_LABEL "RetroEffects.Posterize"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;

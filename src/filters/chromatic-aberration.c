@@ -22,6 +22,17 @@ void chromatic_aberration_destroy(retro_effects_filter_data_t *filter)
 	//}
 
 	obs_leave_graphics();
+
+	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "ca_type");
+	obs_data_unset_user_value(settings, "ca_red_offset");
+	obs_data_unset_user_value(settings, "ca_red_offset_angle");
+	obs_data_unset_user_value(settings, "ca_green_offset");
+	obs_data_unset_user_value(settings, "ca_green_offset_angle");
+	obs_data_unset_user_value(settings, "ca_blue_offset");
+	obs_data_unset_user_value(settings, "ca_blue_offset_angle");
+	obs_data_release(settings);
+
 	bfree(filter->active_filter_data);
 	filter->active_filter_data = NULL;
 }

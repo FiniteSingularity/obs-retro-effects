@@ -3,6 +3,7 @@
 #include "filters/frame-skip.h"
 #include "filters/interlace.h"
 #include "filters/chromatic-aberration.h"
+#include "filters/posterize.h"
 
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
@@ -140,14 +141,17 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
 	obs_property_list_add_int(filter_list,
-				  obs_module_text(RETRO_FILTER_CA_LABEL),
-				  RETRO_FILTER_CA);
+		obs_module_text(RETRO_FILTER_CA_LABEL),
+		RETRO_FILTER_CA);
 	obs_property_list_add_int(
 		filter_list, obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
 		RETRO_FILTER_FRAME_SKIP);
 	obs_property_list_add_int(filter_list,
-				  obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
-				  RETRO_FILTER_INTERLACE);
+		obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
+		 RETRO_FILTER_INTERLACE);
+	obs_property_list_add_int(filter_list,
+		obs_module_text(RETRO_FILTER_POSTERIZE_LABEL),
+		RETRO_FILTER_POSTERIZE);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -190,6 +194,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 		break;
 	case RETRO_FILTER_INTERLACE:
 		interlace_create(filter);
+		break;
+	case RETRO_FILTER_POSTERIZE:
+		posterize_create(filter);
 		break;
 	}
 }
