@@ -38,6 +38,7 @@ float4 mainImageColorMap(VertData v_in) : TARGET
 	float lum = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
 	lum = round(lum * levels) / levels;
 	float4 c = lerp(color_1, color_2, float4(lum, lum, lum, lum));
+	c.a *= color.a;
 	return c;
 }
 
