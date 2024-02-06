@@ -9,7 +9,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(obs-retro-effects VERSION 0.0.2)
+project(obs-retro-effects VERSION 0.0.3)
 set(PROJECT_FULL_NAME "Retro Effects")
 
 # Set new UUIDs when you start to create a new plugin.
@@ -34,6 +34,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/frame-skip.h
 	src/filters/interlace.c
 	src/filters/interlace.h
+	src/filters/posterize.c
+	src/filters/posterize.h
 	src/version.h)
 
 if(BUILD_OUT_OF_TREE)

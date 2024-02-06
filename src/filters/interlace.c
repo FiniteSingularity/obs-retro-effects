@@ -21,6 +21,13 @@ void interlace_destroy(retro_effects_filter_data_t *filter)
 		gs_texrender_destroy(data->buffer_texrender);
 	}
 	obs_leave_graphics();
+
+	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "interlace_thickness");
+	obs_data_unset_user_value(settings, "interlace_brightness_reduction");
+	obs_data_unset_user_value(settings, "interlace_reduce_alpha");
+	obs_data_release(settings);
+
 	bfree(filter->active_filter_data);
 	filter->active_filter_data = NULL;
 }

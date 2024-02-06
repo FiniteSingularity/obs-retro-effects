@@ -1,0 +1,62 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float levels;
+uniform float4 color_1;
+uniform float4 color_2;
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImageColor(VertData v_in) : TARGET
+{
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	color.rgb = round(color.rgb * levels) / levels;
+	return color;
+}
+
+float4 mainImageColorMap(VertData v_in) : TARGET
+{
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	float lum = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+	lum = round(lum * levels) / levels;
+	float4 c = lerp(color_1, color_2, float4(lum, lum, lum, lum));
+	c.a *= color.a;
+	return c;
+}
+
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageColor(v_in);
+	}
+}
+
+technique DrawColorMap
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageColorMap(v_in);
+	}
+}
