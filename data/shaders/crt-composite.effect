@@ -1,0 +1,66 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform texture2d blur_image;
+uniform float brightness;
+uniform float black_level;
+uniform float white_level;
+uniform float dist;
+
+#define EPS 1.e-8
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	// Barrel Distortion
+	float2 uv = v_in.uv * 2. - 1.;
+	float r_pixel_2 = uv.x * uv.x + uv.y * uv.y;
+	float barrel = r_pixel_2 * dist;
+	uv = (barrel > EPS) ? 0.5 * ((uv / barrel * (1. - sqrt(1. - 2. * barrel))) + 1.) : v_in.uv;
+
+	// Anti-alias barrel distortion edges
+	float d = min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y));	
+	float w = length(float2(ddx(d), ddy(d)));
+	float aa_mask = smoothstep(-0.7, 0.7, (abs(frac(d - 0.25) - 0.5) - 0.25) / w);
+
+	float4 color = image.Sample(textureSampler, uv);
+	float4 blur_color = blur_image.Sample(textureSampler, uv);
+	// Brightness correction on bloom/blur layer
+	//blur_color.rgb *= brightness;
+	float threshold = brightness;
+	float4 highlight = saturate(blur_color - threshold) * 1.0 / (1.0 - threshold);
+	// Screen Blending between main color layer and bloom/blur layer
+	color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - highlight.rgb);
+	// Apply black/white levels correction
+	color.rgb = saturate((color.rgb - black_level) / (white_level - black_level));
+	// Apply barrel disortion anti-alias mask to alpha channel
+	color.a *= aa_mask;
+	return color;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}

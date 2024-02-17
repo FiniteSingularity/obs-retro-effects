@@ -4,6 +4,9 @@
 #include "filters/interlace.h"
 #include "filters/chromatic-aberration.h"
 #include "filters/posterize.h"
+#include "filters/dither.h"
+#include "filters/crt.h"
+#include "blur/blur.h"
 
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
@@ -46,6 +49,8 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	filter->frames_skipped = 0;
 	filter->initial_load = true;
 
+	blur_create(filter);
+
 	load_output_effect(filter);
 	obs_source_update(source, settings);
 
@@ -70,6 +75,7 @@ static void retro_effects_filter_destroy(void *data)
 	obs_leave_graphics();
 
 	filter->filter_destroy(filter);
+	blur_destroy(filter);
 
 	bfree(filter->base);
 	bfree(filter);
@@ -96,7 +102,6 @@ static void retro_effects_filter_update(void *data, obs_data_t *settings)
 	filter->active_filter = new_active_filter;
 	if (filter->initial_load) {
 		load_filter(filter, 0);
-		filter->initial_load = false;
 	} else if (new_active_filter != old_active_filter) {
 		load_filter(filter, old_active_filter);
 		obs_source_update_properties(filter->base->context);
@@ -105,6 +110,7 @@ static void retro_effects_filter_update(void *data, obs_data_t *settings)
 	if (filter->filter_update) {
 		filter->filter_update(filter, settings);
 	}
+	filter->initial_load = false;
 }
 
 static void retro_effects_filter_video_render(void *data, gs_effect_t *effect)
@@ -141,17 +147,23 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
 	obs_property_list_add_int(filter_list,
-		obs_module_text(RETRO_FILTER_CA_LABEL),
-		RETRO_FILTER_CA);
+				  obs_module_text(RETRO_FILTER_CA_LABEL),
+				  RETRO_FILTER_CA);
 	obs_property_list_add_int(
 		filter_list, obs_module_text(RETRO_FILTER_FRAME_SKIP_LABEL),
 		RETRO_FILTER_FRAME_SKIP);
 	obs_property_list_add_int(filter_list,
-		obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
-		 RETRO_FILTER_INTERLACE);
+				  obs_module_text(RETRO_FILTER_INTERLACE_LABEL),
+				  RETRO_FILTER_INTERLACE);
 	obs_property_list_add_int(filter_list,
-		obs_module_text(RETRO_FILTER_POSTERIZE_LABEL),
-		RETRO_FILTER_POSTERIZE);
+				  obs_module_text(RETRO_FILTER_POSTERIZE_LABEL),
+				  RETRO_FILTER_POSTERIZE);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_DITHER_LABEL),
+				  RETRO_FILTER_DITHER);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_CRT_LABEL),
+				  RETRO_FILTER_CRT);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -197,6 +209,12 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 		break;
 	case RETRO_FILTER_POSTERIZE:
 		posterize_create(filter);
+		break;
+	case RETRO_FILTER_DITHER:
+		dither_create(filter);
+		break;
+	case RETRO_FILTER_CRT:
+		crt_create(filter);
 		break;
 	}
 }

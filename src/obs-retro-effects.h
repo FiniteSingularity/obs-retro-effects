@@ -15,25 +15,34 @@
 #define RETRO_FILTER_CA_LABEL "RetroEffects.ChromaticAberration"
 #define RETRO_FILTER_POSTERIZE 4
 #define RETRO_FILTER_POSTERIZE_LABEL "RetroEffects.Posterize"
+#define RETRO_FILTER_DITHER 5
+#define RETRO_FILTER_DITHER_LABEL "RetroEffects.Dither"
+#define RETRO_FILTER_CRT 6
+#define RETRO_FILTER_CRT_LABEL "RetroEffects.CRT"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;
 
+typedef struct blur_data blur_data_t;
+
 struct retro_effects_filter_data {
 	base_filter_data_t *base;
 	void *active_filter_data;
+	blur_data_t *blur_data;
+
 	int active_filter;
 	bool initial_load;
 
 	// Filter Function Pointers
 	void (*filter_properties)(retro_effects_filter_data_t *,
 				  obs_properties_t *); // Properties UI setup.
-	void (*filter_defaults)(obs_data_t *);                           // defaults
+	void (*filter_defaults)(obs_data_t *);         // defaults
 	void (*filter_update)(retro_effects_filter_data_t *,
-			      obs_data_t *);                     // update
-	void (*filter_video_render)(retro_effects_filter_data_t *);      // render
-	void (*filter_destroy)(retro_effects_filter_data_t *);           // destroy
-	void (*filter_video_tick)(retro_effects_filter_data_t *, float); // Video Tick
+			      obs_data_t *);                        // update
+	void (*filter_video_render)(retro_effects_filter_data_t *); // render
+	void (*filter_destroy)(retro_effects_filter_data_t *);      // destroy
+	void (*filter_video_tick)(retro_effects_filter_data_t *,
+				  float); // Video Tick
 
 	// Parameters go here
 	int frames_to_skip;

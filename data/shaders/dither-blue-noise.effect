@@ -1,0 +1,255 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float2 offset;
+uniform float dither_size;
+uniform float contrast;
+uniform float gamma;
+uniform float color_steps;
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+// Hilbert R1 Noise from https://www.shadertoy.com/view/cl2GRm
+
+#define HILBERT_LEVEL 0x7        // bigger = slower but less tiling
+#define HILBERT_WIDTH 0x80       // 0x1 << HILBERT_LEVEL
+
+// based on [roberts]
+float quasirand_r1(int n)
+{
+	const float INV_PHI = 0.61803398874989484820;
+	return frac(0.5 + INV_PHI * float(n));
+}
+
+// original from https://www.shadertoy.com/view/XtGBDW
+int HilbertIndex(int2 Position)
+{
+	int Index = 0x0;
+	for (int CurLevel = HILBERT_WIDTH / 2; CurLevel > 0; CurLevel /= 2)
+	{
+		int2 pcl = int2(Position.x & CurLevel, Position.y & CurLevel);
+		int2 Region = int2(pcl.x > 0 ? 1 : 0, pcl.y > 0 ? 1 : 0);
+      // //int2 Region = int2(greaterThan((Position & int2(CurLevel, CurLevel)), int2(0U, 0U)));
+		Index += CurLevel * CurLevel * ((3 * Region.x) ^ Region.y);
+		if (Region.y == 0)
+		{
+			if (Region.x == 1)
+				Position = int2(HILBERT_WIDTH - 1, HILBERT_WIDTH - 1) - Position;
+			Position.xy = Position.yx;
+		}
+	}
+	return Index;
+}
+
+float2 mod(float2 x, float2 y)
+{
+	return x - y * floor(x / y);
+}
+
+// original from https://www.shadertoy.com/view/3tB3z3
+float HilbertR1Noise(float2 p)
+{
+	return quasirand_r1(HilbertIndex(int2(p)) % 131072);
+}
+
+float3 HilbertR1Noise_rgb(float2 p)
+{
+	float h1 = HilbertR1Noise(p);
+	float h2 = HilbertR1Noise(p + float2(1234., 0.));
+	float h3 = HilbertR1Noise(p + float2(0., 1234.));
+	return float3(h1, h2, h3);
+}
+
+// [roberts] recommends remapping their proposed R2Noise dither mask
+// through this formula to eliminate the discontinuities from fract().
+// Looks like it improves dithering for other noises too.
+float3 TriWave(float3 z)
+{ // z in [0..1]
+	return lerp(2.0 * z, 2.0 - 2.0 * z, step(0.5, z));
+}
+
+float3 BlueNoise(float2 p)
+{
+	float3 noise = HilbertR1Noise_rgb(p);
+	return TriWave(noise);
+}
+
+float RGBToLum(float3 color)
+{
+	return 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+}
+
+#ifdef USE_BAYER2
+float get_bayer(float2 coord)
+{
+	int bayer2[4] = { 0, 2, 3, 1 };
+	float2 sample_coord = mod((coord / dither_size), float2(2.0, 2.0));
+	return float(bayer2[int(sample_coord.y) * 2 + int(sample_coord.x)]) / 4.0;
+}
+#endif
+
+#ifdef USE_BAYER4
+float get_bayer(float2 coord)
+{
+	int bayer4[16] =
+	{
+		0, 8, 2, 10,
+		12, 4, 14, 6,
+		3, 11, 1, 9,
+		15, 7, 13, 5
+	};
+	float2 sample_coord = mod((coord / dither_size), float2(4.0, 4.0));
+	return float(bayer4[int(sample_coord.y) * 4 + int(sample_coord.x)]) / 16.0;
+}
+#endif
+
+#ifdef USE_BAYER8
+float get_bayer(float2 coord)
+{
+	int bayer8[64] =
+	{
+		0, 32, 8, 40, 2, 34, 10, 42,
+		48, 16, 56, 24, 50, 18, 58, 26,
+		12, 44, 4, 36, 14, 46, 6, 38,
+		60, 28, 52, 20, 62, 30, 54, 22,
+		 3, 35, 11, 43, 1, 33, 9, 41,
+		51, 19, 59, 27, 49, 17, 57, 25,
+		15, 47, 7, 39, 13, 45, 5, 37,
+		63, 31, 55, 23, 61, 29, 53, 21
+	};
+	float2 sample_coord = mod((coord / dither_size), float2(8.0, 8.0));
+	return (float(bayer8[int(sample_coord.y) * 8 + int(sample_coord.x)]) / 64.0);
+}
+#endif
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImageColorBN(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color  
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+  
+	float noise = RGBToLum(BlueNoise((coord - offset) / dither_size)) / color_steps;
+	float3 dithered = color.rgb + noise;
+	dithered = floor(dithered * color_steps) / color_steps;
+	return float4(dithered, color.a);
+}
+
+float4 mainImageMonoBN(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color  
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+	
+	float noise = RGBToLum(BlueNoise((coord - offset) / dither_size))/color_steps;
+	
+	float lum = RGBToLum(color.rgb);
+
+	float dithered = lum + noise;
+	dithered = floor(dithered * color_steps) / color_steps;
+	return float4(dithered, dithered, dithered, color.a);
+}
+
+float4 mainImageColorOrdered(VertData v_in) : TARGET
+{	
+	float2 coord = v_in.uv * uv_size;
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color  
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+	
+	float noise = get_bayer(coord) / color_steps;
+	float3 dithered = color.rgb + noise;
+	dithered = floor(dithered * color_steps) / color_steps;
+	return float4(dithered, color.a);
+}
+
+
+
+float4 mainImageMonoOrdered(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color  
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+  
+	float noise = get_bayer(coord) / color_steps;
+	float lum = RGBToLum(color.rgb);
+	float dithered = lum + noise;
+	dithered = floor(dithered * color_steps) / color_steps;
+	return float4(dithered, dithered, dithered, color.a);
+}
+
+technique DrawColorBN
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageColorBN(v_in);
+	}
+}
+
+technique DrawMonoBN
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageMonoBN(v_in);
+	}
+}
+
+technique DrawColorOrdered
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageColorOrdered(v_in);
+	}
+}
+
+technique DrawMonoOrdered
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageMonoOrdered(v_in);
+	}
+}

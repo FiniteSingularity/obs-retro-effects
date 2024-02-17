@@ -28,8 +28,16 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/obs-retro-effects.h
 	src/obs-utils.c
 	src/obs-utils.h
+	src/blur/blur.c
+	src/blur/blur.h
+	src/blur/gaussian-kernel.c
+	src/blur/gaussian-kernel.h
 	src/filters/chromatic-aberration.c
 	src/filters/chromatic-aberration.h
+	src/filters/crt.c
+	src/filters/crt.h
+	src/filters/dither.c
+	src/filters/dither.h
 	src/filters/frame-skip.c
 	src/filters/frame-skip.h
 	src/filters/interlace.c
