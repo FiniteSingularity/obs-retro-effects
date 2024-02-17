@@ -36,7 +36,6 @@ void frame_skip_filter_properties(retro_effects_filter_data_t *data,
 				  obs_properties_t *props)
 {
 	UNUSED_PARAMETER(data);
-	blog(LOG_INFO, "Frame Skip Properties Called");
 	obs_properties_add_int_slider(
 		props, "skip_frames",
 		obs_module_text("RetroEffects.FrameSkip.NumFrames"), 0, 600, 1);

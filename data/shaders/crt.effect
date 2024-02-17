@@ -1,0 +1,421 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float mask_intensity;
+uniform int phosphor_layout;
+uniform float vignette_intensity;
+uniform float corner_radius;
+
+// Mask weights are from 
+float3 mask_weights(float2 coord)
+{
+	float3 weights = float3(1., 1., 1.);
+	float on = 1.;
+	float off = 1. - mask_intensity;
+	float3 red = float3(on, off, off);
+	float3 green = float3(off, on, off);
+	float3 blue = float3(off, off, on);
+	float3 magenta = float3(on, off, on);
+	float3 yellow = float3(on, on, off);
+	float3 cyan = float3(off, on, on);
+	float3 black = float3(off, off, off);
+	float3 white = float3(on, on, on);
+	int w, z = 0;
+   
+	 // This pattern is used by a few layouts, so we'll define it here
+	float awx = floor(fmod(coord.x, 2.0));
+	float awy = floor(fmod(coord.y, 2.0));
+	float3 aperture_weights = lerp(magenta, green, float3(awx, awx, awx));
+   
+	if (phosphor_layout == 0)
+		return weights;
+	else if (phosphor_layout == 1)
+	{
+		// classic aperture for RGB panels; good for 1080p, too small for 4K+
+		// aka aperture_1_2_bgr
+		weights = aperture_weights;
+		return weights;
+	}
+	else if (phosphor_layout == 2)
+	{
+		// 2x2 shadow mask for RGB panels; good for 1080p, too small for 4K+
+		// aka delta_1_2x1_bgr
+		float3 inverse_aperture = lerp(green, magenta, awx);
+		weights = lerp(aperture_weights, inverse_aperture, awy);
+		return weights;
+	}
+	else if (phosphor_layout == 3)
+	{
+      // slot mask for RGB panels; looks okay at 1080p, looks better at 4K
+		float3 slotmask[3][4] =
+		{
+			{ magenta, green, black, black },
+			{ magenta, green, magenta, green },
+			{ black, black, magenta, green }
+		};
+      
+      // find the vertical index
+		w = int(floor(fmod(coord.y, 3.0)));
+
+      // find the horizontal index
+		z = int(floor(fmod(coord.x, 4.0)));
+
+      // use the indexes to find which color to apply to the current pixel
+		weights = slotmask[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 4)
+	{
+      // classic aperture for RBG panels; good for 1080p, too small for 4K+
+		weights = lerp(yellow, blue, awx);
+		return weights;
+	}
+	else if (phosphor_layout == 5)
+	{
+      // 2x2 shadow mask for RBG panels; good for 1080p, too small for 4K+
+		float3 inverse_aperture = lerp(blue, yellow, awx);
+		weights = lerp(lerp(yellow, blue, awx), inverse_aperture, awy);
+		return weights;
+	}
+	else if (phosphor_layout == 6)
+	{
+      // aperture_1_4_rgb; good for simulating lower 
+		float3 ap4[4] = { red, green, blue, black };
+      
+		z = int(floor(fmod(coord.x, 4.0)));
+      
+		weights = ap4[z];
+		return weights;
+	}
+	else if (phosphor_layout == 7)
+	{
+      // aperture_2_5_bgr
+		float3 ap3[5] = { red, magenta, blue, green, green };
+      
+		z = int(floor(fmod(coord.x, 5.0)));
+      
+		weights = ap3[z];
+		return weights;
+	}
+	else if (phosphor_layout == 8)
+	{
+      // aperture_3_6_rgb
+      
+		float3 big_ap[7] = { red, red, yellow, green, cyan, blue, blue };
+      
+		w = int(floor(fmod(coord.x, 7.)));
+      
+		weights = big_ap[w];
+		return weights;
+	}
+	else if (phosphor_layout == 9)
+	{
+      // reduced TVL aperture for RGB panels
+      // aperture_2_4_rgb
+      
+		float3 big_ap_rgb[4] = { red, yellow, cyan, blue };
+      
+		w = int(floor(fmod(coord.x, 4.)));
+      
+		weights = big_ap_rgb[w];
+		return weights;
+	}
+	else if (phosphor_layout == 10)
+	{
+      // reduced TVL aperture for RBG panels
+      
+		float3 big_ap_rbg[4] = { red, magenta, cyan, green };
+      
+		w = int(floor(fmod(coord.x, 4.)));
+      
+		weights = big_ap_rbg[w];
+		return weights;
+	}
+	else if (phosphor_layout == 11)
+	{
+      // delta_1_4x1_rgb; dunno why this is called 4x1 when it's obviously 4x2 /shrug
+		float3 delta1[2][4] =
+		{
+			{ red, green, blue, black },
+			{ blue, black, red, green }
+		};
+      
+		w = int(floor(fmod(coord.y, 2.0)));
+		z = int(floor(fmod(coord.x, 4.0)));
+      
+		weights = delta1[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 12)
+	{
+      // delta_2_4x1_rgb
+		float3 delta[2][4] =
+		{
+			{ red, yellow, cyan, blue },
+			{ cyan, blue, red, yellow }
+		};
+      
+		w = int(floor(fmod(coord.y, 2.0)));
+		z = int(floor(fmod(coord.x, 4.0)));
+      
+		weights = delta[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 13)
+	{
+      // delta_2_4x2_rgb
+		float3 delta[4][4] =
+		{
+			{ red, yellow, cyan, blue },
+			{ red, yellow, cyan, blue },
+			{ cyan, blue, red, yellow },
+			{ cyan, blue, red, yellow }
+		};
+      
+		w = int(floor(fmod(coord.y, 4.0)));
+		z = int(floor(fmod(coord.x, 4.0)));
+      
+		weights = delta[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 14)
+	{
+      // slot mask for RGB panels; too low-pitch for 1080p, looks okay at 4K, but wants 8K+
+		float3 slotmask[3][6] =
+		{
+			{ magenta, green, black, black, black, black },
+			{ magenta, green, black, magenta, green, black },
+			{ black, black, black, magenta, green, black }
+		};
+      
+		w = int(floor(fmod(coord.y, 3.0)));
+
+		z = int(floor(fmod(coord.x, 6.0)));
+
+		weights = slotmask[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 15)
+	{
+      // slot_2_4x4_rgb
+		float3 slot2[4][8] =
+		{
+			{ red, yellow, cyan, blue, red, yellow, cyan, blue },
+			{ red, yellow, cyan, blue, black, black, black, black },
+			{ red, yellow, cyan, blue, red, yellow, cyan, blue },
+			{ black, black, black, black, red, yellow, cyan, blue }
+		};
+   
+		w = int(floor(fmod(coord.y, 4.0)));
+		z = int(floor(fmod(coord.x, 8.0)));
+      
+		weights = slot2[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 16)
+	{
+      // slot mask for RBG panels; too low-pitch for 1080p, looks okay at 4K, but wants 8K+
+		float3 slotmask[3][4] =
+		{
+			{ yellow, blue, black, black },
+			{ yellow, blue, yellow, blue },
+			{ black, black, yellow, blue }
+		};
+      
+		w = int(floor(fmod(coord.y, 3.0)));
+
+		z = int(floor(fmod(coord.x, 4.0)));
+
+		weights = slotmask[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 17)
+	{
+      // slot_2_5x4_bgr
+		float3 slot2[4][10] =
+		{
+			{ red, magenta, blue, green, green, red, magenta, blue, green, green },
+			{ black, blue, blue, green, green, red, red, black, black, black },
+			{ red, magenta, blue, green, green, red, magenta, blue, green, green },
+			{ red, red, black, black, black, black, blue, blue, green, green }
+		};
+   
+		w = int(floor(fmod(coord.y, 4.0)));
+		z = int(floor(fmod(coord.x, 10.0)));
+      
+		weights = slot2[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 18)
+	{
+      // same as above but for RBG panels
+		float3 slot2[4][10] =
+		{
+			{ red, yellow, green, blue, blue, red, yellow, green, blue, blue },
+			{ black, green, green, blue, blue, red, red, black, black, black },
+			{ red, yellow, green, blue, blue, red, yellow, green, blue, blue },
+			{ red, red, black, black, black, black, green, green, blue, blue }
+		};
+   
+		w = int(floor(fmod(coord.y, 4.0)));
+		z = int(floor(fmod(coord.x, 10.0)));
+      
+		weights = slot2[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 19)
+	{
+      // slot_3_7x6_rgb
+		float3 slot[6][14] =
+		{
+			{ red, red, yellow, green, cyan, blue, blue, red, red, yellow, green, cyan, blue, blue },
+			{ red, red, yellow, green, cyan, blue, blue, red, red, yellow, green, cyan, blue, blue },
+			{ red, red, yellow, green, cyan, blue, blue, black, black, black, black, black, black, black },
+			{ red, red, yellow, green, cyan, blue, blue, red, red, yellow, green, cyan, blue, blue },
+			{ red, red, yellow, green, cyan, blue, blue, red, red, yellow, green, cyan, blue, blue },
+			{ black, black, black, black, black, black, black, black, red, red, yellow, green, cyan, blue }
+		};
+      
+		w = int(floor(fmod(coord.y, 6.0)));
+		z = int(floor(fmod(coord.x, 14.0)));
+      
+		weights = slot[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 20)
+	{
+      // TATE slot mask for RGB layouts; this is not realistic obviously, but it looks nice and avoids chromatic aberration
+		float3 tatemask[4][4] =
+		{
+			{ green, magenta, green, magenta },
+			{ black, blue, green, red },
+			{ green, magenta, green, magenta },
+			{ green, red, black, blue }
+		};
+      
+		w = int(floor(fmod(coord.y, 4.0)));
+
+		z = int(floor(fmod(coord.x, 4.0)));
+
+		weights = tatemask[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 21)
+	{
+      // based on MajorPainInTheCactus' HDR slot mask
+		float3 slot[4][8] =
+		{
+			{ red, green, blue, black, red, green, blue, black },
+			{ red, green, blue, black, black, black, black, black },
+			{ red, green, blue, black, red, green, blue, black },
+			{ black, black, black, black, red, green, blue, black }
+		};
+      
+		w = int(floor(fmod(coord.y, 4.0)));
+		z = int(floor(fmod(coord.x, 8.0)));
+      
+		weights = slot[w][z];
+		return weights;
+	}
+	else if (phosphor_layout == 22)
+	{
+      // black and white aperture; good for weird subpixel layouts and low brightness; good for 1080p and lower
+		float3 bw3[3] = { black, white, white };
+      
+		z = int(floor(fmod(coord.x, 3.0)));
+      
+		weights = bw3[z];
+		return weights;
+	}
+	else if (phosphor_layout == 23)
+	{
+      // black and white aperture; good for weird subpixel layouts and low brightness; good for 4k 
+		float3 bw4[4] = { black, black, white, white };
+      
+		z = int(floor(fmod(coord.x, 4.0)));
+      
+		weights = bw4[z];
+		return weights;
+	}
+	else if (phosphor_layout == 24)
+	{
+      // shadowmask courtesy of Louis. Suitable for lower TVL on high-res 4K+ screens
+		float3 shadow[6][10] =
+		{
+			{ green, cyan, blue, blue, blue, red, red, red, yellow, green },
+			{ green, cyan, blue, blue, blue, red, red, red, yellow, green },
+			{ green, cyan, blue, blue, blue, red, red, red, yellow, green },
+			{ red, red, red, yellow, green, green, cyan, blue, blue, blue },
+			{ red, red, red, yellow, green, green, cyan, blue, blue, blue },
+			{ red, red, red, yellow, green, green, cyan, blue, blue, blue },
+		};
+      
+		w = int(floor(fmod(coord.y, 6.0)));
+		z = int(floor(fmod(coord.x, 10.0)));
+      
+		weights = shadow[w][z];
+		return weights;
+	}
+	return weights;
+}
+
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+sampler_state patternSampler {
+    Filter = Linear;
+    AddressU = Wrap;
+    AddressV = Wrap;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	// Grab current pixel color
+	float2 coord = v_in.uv * uv_size;
+	float4 color = image.Sample(textureSampler, v_in.uv);
+
+	// Grab phosphor mask
+	float3 pm_color = mask_weights(coord);
+
+	// Vignette
+	float2 uv = v_in.uv * (1.0 - v_in.uv);
+	float vignette = pow(uv.x * uv.y * 15.0, vignette_intensity);
+
+	// Corner Radius
+	// Box SDF + rounded corners adjustment: https://iquilezles.org/articles/distfunctions2d/ 
+	float2 d = (abs(coord - uv_size / 2.0) - uv_size / 2.0) + corner_radius;
+	float edge_distance = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - corner_radius;
+	// Anti-Alias Mask (applied to alpha channel to anti-alias rounded corners)
+	float aa_mask = 1.0 - smoothstep(-0.7, 0.7, edge_distance);
+	
+	return float4(pm_color.rgb*color.rgb * vignette, color.a*aa_mask);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}

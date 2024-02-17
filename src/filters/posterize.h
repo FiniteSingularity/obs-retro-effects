@@ -5,6 +5,8 @@
 #define POSTERIZE_COLOR_PASSTHROUGH_LABEL "RetroEffects.Posterize.Passthrough"
 #define POSTERIZE_COLOR_MAP 1
 #define POSTERIZE_COLOR_MAP_LABEL "RetroEffects.Posterize.ColorMap"
+#define POSTERIZE_COLOR_SOURCE_MAP 2
+#define POSTERIZE_COLOR_SOURCE_MAP_LABEL "RetroEffects.Posterize.SourceColorMap"
 
 struct posterize_filter_data;
 typedef struct posterize_filter_data posterize_filter_data_t;
@@ -17,11 +19,14 @@ struct posterize_filter_data {
 	gs_eparam_t *param_levels;
 	gs_eparam_t *param_color_1;
 	gs_eparam_t *param_color_2;
+	gs_eparam_t *param_color_source;
 
+	obs_weak_source_t *color_source;
 	float levels;
 	uint32_t technique;
 	struct vec4 color_1;
 	struct vec4 color_2;
+
 };
 
 extern void posterize_create(retro_effects_filter_data_t *filter);

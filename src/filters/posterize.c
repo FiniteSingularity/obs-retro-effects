@@ -47,6 +47,24 @@ void posterize_filter_update(retro_effects_filter_data_t *data,
 
 	filter->technique =
 		(uint32_t)obs_data_get_int(settings, "posterize_technique");
+
+	const char *color_source_name =
+		obs_data_get_string(settings, "posterize_map_source");
+	obs_source_t *color_source =
+		(color_source_name && strlen(color_source_name))
+			? obs_get_source_by_name(color_source_name)
+			: NULL;
+	if (color_source) {
+		obs_weak_source_release(filter->color_source);
+		filter->color_source =
+			obs_source_get_weak_source(color_source);
+		obs_source_release(color_source);
+	} else {
+		if (filter->color_source) {
+			obs_weak_source_release(filter->color_source);
+		}
+		filter->color_source = NULL;
+	}
 }
 
 void posterize_filter_defaults(obs_data_t *settings) {
@@ -75,7 +93,22 @@ void posterize_filter_properties(retro_effects_filter_data_t *data,
 		technique, obs_module_text(POSTERIZE_COLOR_MAP_LABEL),
 		POSTERIZE_COLOR_MAP);
 
+	obs_property_list_add_int(technique,
+		obs_module_text(POSTERIZE_COLOR_SOURCE_MAP_LABEL),
+		POSTERIZE_COLOR_SOURCE_MAP);
+
 	obs_property_set_modified_callback(technique, posterize_technique_modified);
+
+	obs_property_t *map_source = obs_properties_add_list(
+		props, "posterize_map_source",
+		obs_module_text("RetroEffects.Posterize.MapSource"),
+		OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
+	obs_enum_sources(add_source_to_list, map_source);
+	obs_enum_scenes(add_source_to_list, map_source);
+	obs_property_list_insert_string(
+		map_source, 0,
+		obs_module_text("RetroEffects.Posterize.MapSource.None"),
+		"");
 
 	obs_properties_add_color_alpha(
 		props, "posterize_color_1",
@@ -131,11 +164,69 @@ void posterize_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_vec4(filter->param_color_2, &filter->color_2);
 	}
 
+	gs_texrender_t *color_source_render = NULL;
+	gs_texture_t *source_texture = NULL;
+	if (filter->technique == POSTERIZE_COLOR_SOURCE_MAP) {
+		obs_source_t *source =
+			filter->color_source
+				? obs_weak_source_get_source(
+					  filter->color_source)
+				: NULL;
+		if (!source) {
+			gs_texrender_t *tmp = base->output_texrender;
+			base->output_texrender = base->input_texrender;
+			base->input_texrender = tmp;
+			return;
+		}
+
+		const enum gs_color_space preferred_spaces[] = {
+			GS_CS_SRGB,
+			GS_CS_SRGB_16F,
+			GS_CS_709_EXTENDED,
+		};
+		const enum gs_color_space space = obs_source_get_color_space(
+			source, OBS_COUNTOF(preferred_spaces),
+			preferred_spaces);
+		const enum gs_color_format format =
+			gs_get_format_from_space(space);
+
+		// Set up a tex renderer for source
+		color_source_render = gs_texrender_create(format, GS_ZS_NONE);
+		uint32_t base_width = obs_source_get_width(source);
+		uint32_t base_height = obs_source_get_height(source);
+
+		gs_blend_state_push();
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+		if (gs_texrender_begin_with_color_space(color_source_render,
+							base_width, base_height,
+							space)) {
+			const float w = (float)base_width;
+			const float h = (float)base_height;
+			struct vec4 clear_color;
+
+			vec4_zero(&clear_color);
+			gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+			gs_ortho(0.0f, w, 0.0f, h, -100.0f, 100.0f);
+			obs_source_video_render(source);
+			gs_texrender_end(color_source_render);
+		}
+		gs_blend_state_pop();
+		obs_source_release(source);
+		source_texture = gs_texrender_get_texture(color_source_render);
+
+		if (filter->param_color_source && source_texture) {
+			gs_effect_set_texture(filter->param_color_source,
+						      source_texture);
+		}
+	}
+
 	set_render_parameters();
 	set_blending_parameters();
 
-	const char *technique =
-		filter->technique == POSTERIZE_COLOR_PASSTHROUGH ? "Draw" : "DrawColorMap";
+	const char *technique = filter->technique == POSTERIZE_COLOR_PASSTHROUGH
+					? "Draw"
+					: filter->technique == POSTERIZE_COLOR_MAP
+					? "DrawColorMap" : "DrawSourceColorMap";
 
 	if (gs_texrender_begin(base->output_texrender, base->width,
 			       base->height)) {
@@ -147,6 +238,9 @@ void posterize_filter_video_render(retro_effects_filter_data_t *data)
 	}
 
 	gs_blend_state_pop();
+	if (color_source_render) {
+		gs_texrender_destroy(color_source_render);
+	}
 }
 
 static void posterize_set_functions(retro_effects_filter_data_t *filter)
@@ -208,6 +302,8 @@ static void posterize_load_effect(posterize_filter_data_t *filter)
 				filter->param_color_1 = param;
 			} else if (strcmp(info.name, "color_2") == 0) {
 				filter->param_color_2 = param;
+			} else if (strcmp(info.name, "color_source") == 0) {
+				filter->param_color_source = param;
 			}
 		}
 	}
@@ -223,12 +319,19 @@ static bool posterize_technique_modified(obs_properties_t *props,
 	int technique = (int)obs_data_get_int(settings, "posterize_technique");
 	switch (technique) {
 	case POSTERIZE_COLOR_PASSTHROUGH:
+		setting_visibility("posterize_map_source", false, props);
 		setting_visibility("posterize_color_1", false, props);
 		setting_visibility("posterize_color_2", false, props);
 		break;
 	case POSTERIZE_COLOR_MAP:
+		setting_visibility("posterize_map_source", false, props);
 		setting_visibility("posterize_color_1", true, props);
 		setting_visibility("posterize_color_2", true, props);
+		break;
+	case POSTERIZE_COLOR_SOURCE_MAP:
+		setting_visibility("posterize_map_source", true, props);
+		setting_visibility("posterize_color_1", false, props);
+		setting_visibility("posterize_color_2", false, props);
 		break;
 	}
 	return true;

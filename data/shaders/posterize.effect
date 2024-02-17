@@ -1,5 +1,6 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
+uniform texture2d color_source;
 uniform float2 uv_size;
 uniform float levels;
 uniform float4 color_1;
@@ -42,6 +43,16 @@ float4 mainImageColorMap(VertData v_in) : TARGET
 	return c;
 }
 
+float4 mainImageSourceColorMap(VertData v_in) : TARGET
+{
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	float lum = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+	lum = round(lum * levels) / levels;
+	//float4 c = lerp(color_1, color_2, float4(lum, lum, lum, lum));
+	float4 c = color_source.Sample(textureSampler, float2(lum, 0.5));
+	c.a *= color.a;
+	return c;
+}
 
 technique Draw
 {
@@ -58,5 +69,14 @@ technique DrawColorMap
 	{
 		vertex_shader = mainTransform(v_in);
 		pixel_shader = mainImageColorMap(v_in);
+	}
+}
+
+technique DrawSourceColorMap
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImageSourceColorMap(v_in);
 	}
 }

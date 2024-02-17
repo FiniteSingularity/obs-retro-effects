@@ -6,8 +6,11 @@ void interlace_create(retro_effects_filter_data_t *filter)
 	interlace_filter_data_t *data =
 		bzalloc(sizeof(interlace_filter_data_t));
 	filter->active_filter_data = data;
+	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	interlace_filter_defaults(settings);
 	interlace_set_functions(filter);
 	load_interlace_effect(data);
+	obs_data_release(settings);
 }
 
 void interlace_destroy(retro_effects_filter_data_t *filter)

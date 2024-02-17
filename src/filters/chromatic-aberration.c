@@ -17,9 +17,6 @@ void chromatic_aberration_destroy(retro_effects_filter_data_t *filter)
 	if (data->effect_chromatic_aberration) {
 		gs_effect_destroy(data->effect_chromatic_aberration);
 	}
-	//if (data->source_mask_texrender) {
-	//	gs_texrender_destroy(data->source_mask_texrender);
-	//}
 
 	obs_leave_graphics();
 
@@ -38,16 +35,23 @@ void chromatic_aberration_destroy(retro_effects_filter_data_t *filter)
 }
 
 void chromatic_aberration_filter_update(retro_effects_filter_data_t *data,
-			     obs_data_t *settings)
+					obs_data_t *settings)
 {
 	chromatic_aberration_filter_data_t *filter = data->active_filter_data;
-	filter->offsets.x = (float)obs_data_get_double(settings, "ca_red_offset");
-	filter->offsets.y = (float)obs_data_get_double(settings, "ca_green_offset");
-	filter->offsets.z = (float)obs_data_get_double(settings, "ca_blue_offset");
+	filter->offsets.x =
+		(float)obs_data_get_double(settings, "ca_red_offset");
+	filter->offsets.y =
+		(float)obs_data_get_double(settings, "ca_green_offset");
+	filter->offsets.z =
+		(float)obs_data_get_double(settings, "ca_blue_offset");
 
-	double angle_r = obs_data_get_double(settings, "ca_red_offset_angle") * M_PI / 180.0;
-	double angle_g = obs_data_get_double(settings, "ca_green_offset_angle") * M_PI / 180.0;
-	double angle_b = obs_data_get_double(settings, "ca_blue_offset_angle") * M_PI / 180.0;
+	double angle_r = obs_data_get_double(settings, "ca_red_offset_angle") *
+			 M_PI / 180.0;
+	double angle_g =
+		obs_data_get_double(settings, "ca_green_offset_angle") * M_PI /
+		180.0;
+	double angle_b = obs_data_get_double(settings, "ca_blue_offset_angle") *
+			 M_PI / 180.0;
 
 	filter->offset_cos_angles.x = (float)cos(angle_r);
 	filter->offset_cos_angles.y = (float)cos(angle_g);
@@ -88,14 +92,15 @@ void chromatic_aberration_filter_properties(retro_effects_filter_data_t *data,
 	obs_property_set_modified_callback(ca_type_list, ca_type_modified);
 
 	obs_property_t *p = obs_properties_add_float_slider(
-		props, "ca_red_offset", obs_module_text("RetroEffects.CA.RedOffset"),
-		-500.0, 500.0, 0.1);
+		props, "ca_red_offset",
+		obs_module_text("RetroEffects.CA.RedOffset"), -500.0, 500.0,
+		0.1);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_float_slider(
 		props, "ca_red_offset_angle",
-		obs_module_text("RetroEffects.CA.RedOffsetAngle"), -360.0, 360.0,
-		0.1);
+		obs_module_text("RetroEffects.CA.RedOffsetAngle"), -360.0,
+		360.0, 0.1);
 	obs_property_float_set_suffix(p, "deg");
 
 	p = obs_properties_add_float_slider(
@@ -106,8 +111,8 @@ void chromatic_aberration_filter_properties(retro_effects_filter_data_t *data,
 
 	p = obs_properties_add_float_slider(
 		props, "ca_green_offset_angle",
-		obs_module_text("RetroEffects.CA.GreenOffsetAngle"), -360.0, 360.0,
-		0.1);
+		obs_module_text("RetroEffects.CA.GreenOffsetAngle"), -360.0,
+		360.0, 0.1);
 	obs_property_float_set_suffix(p, "deg");
 
 	p = obs_properties_add_float_slider(
@@ -118,13 +123,13 @@ void chromatic_aberration_filter_properties(retro_effects_filter_data_t *data,
 
 	p = obs_properties_add_float_slider(
 		props, "ca_blue_offset_angle",
-		obs_module_text("RetroEffects.CA.BlueOffsetAngle"), -360.0, 360.0,
-		0.1);
+		obs_module_text("RetroEffects.CA.BlueOffsetAngle"), -360.0,
+		360.0, 0.1);
 	obs_property_float_set_suffix(p, "deg");
 }
 
-static bool ca_type_modified(obs_properties_t *props,
-				 obs_property_t *p, obs_data_t *settings)
+static bool ca_type_modified(obs_properties_t *props, obs_property_t *p,
+			     obs_data_t *settings)
 {
 	UNUSED_PARAMETER(p);
 
@@ -141,7 +146,7 @@ static bool ca_type_modified(obs_properties_t *props,
 		setting_visibility("ca_blue_offset_angle", false, props);
 		break;
 	}
-	
+
 	return true;
 }
 
@@ -213,7 +218,8 @@ void chromatic_aberration_filter_video_render(retro_effects_filter_data_t *data)
 	gs_blend_state_pop();
 }
 
-static void chromatic_aberration_set_functions(retro_effects_filter_data_t *filter)
+static void
+chromatic_aberration_set_functions(retro_effects_filter_data_t *filter)
 {
 	filter->filter_properties = chromatic_aberration_filter_properties;
 	filter->filter_video_render = chromatic_aberration_filter_video_render;
@@ -223,7 +229,8 @@ static void chromatic_aberration_set_functions(retro_effects_filter_data_t *filt
 	filter->filter_video_tick = NULL;
 }
 
-static void chromatic_aberration_load_effect(chromatic_aberration_filter_data_t *filter)
+static void
+chromatic_aberration_load_effect(chromatic_aberration_filter_data_t *filter)
 {
 	if (filter->effect_chromatic_aberration != NULL) {
 		obs_enter_graphics();
@@ -241,7 +248,8 @@ static void chromatic_aberration_load_effect(chromatic_aberration_filter_data_t 
 	dstr_free(&filename);
 
 	obs_enter_graphics();
-	filter->effect_chromatic_aberration = gs_effect_create(shader_text, NULL, &errors);
+	filter->effect_chromatic_aberration =
+		gs_effect_create(shader_text, NULL, &errors);
 	obs_leave_graphics();
 
 	bfree(shader_text);
@@ -252,12 +260,13 @@ static void chromatic_aberration_load_effect(chromatic_aberration_filter_data_t 
 							    : errors));
 		bfree(errors);
 	} else {
-		size_t effect_count =
-			gs_effect_get_num_params(filter->effect_chromatic_aberration);
+		size_t effect_count = gs_effect_get_num_params(
+			filter->effect_chromatic_aberration);
 		for (size_t effect_index = 0; effect_index < effect_count;
 		     effect_index++) {
 			gs_eparam_t *param = gs_effect_get_param_by_idx(
-				filter->effect_chromatic_aberration, effect_index);
+				filter->effect_chromatic_aberration,
+				effect_index);
 			struct gs_effect_param_info info;
 			gs_effect_get_param_info(param, &info);
 			if (strcmp(info.name, "image") == 0) {
@@ -266,9 +275,11 @@ static void chromatic_aberration_load_effect(chromatic_aberration_filter_data_t 
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "channel_offsets") == 0) {
 				filter->param_channel_offsets = param;
-			} else if (strcmp(info.name, "channel_offset_cos_angles") == 0) {
+			} else if (strcmp(info.name,
+					  "channel_offset_cos_angles") == 0) {
 				filter->param_channel_offset_cos_angles = param;
-			} else if (strcmp(info.name, "channel_offset_sin_angles") == 0) {
+			} else if (strcmp(info.name,
+					  "channel_offset_sin_angles") == 0) {
 				filter->param_channel_offset_sin_angles = param;
 			} else if (strcmp(info.name, "scale") == 0) {
 				filter->param_scale = param;
