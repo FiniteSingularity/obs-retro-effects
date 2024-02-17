@@ -293,6 +293,8 @@ static bool dither_bayer_size_modified(void* data, obs_properties_t *props,
 				       obs_property_t *p, obs_data_t *settings)
 {
 	UNUSED_PARAMETER(p);
+	UNUSED_PARAMETER(props);
+	UNUSED_PARAMETER(settings);
 	dither_filter_data_t *filter = data;
 	filter->reload_effect = true;
 	return false;
