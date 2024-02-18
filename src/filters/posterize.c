@@ -7,6 +7,9 @@ void posterize_create(retro_effects_filter_data_t *filter)
 		bzalloc(sizeof(posterize_filter_data_t));
 	filter->active_filter_data = data;
 	posterize_set_functions(filter);
+	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	posterize_filter_defaults(settings);
+	obs_data_release(settings);
 	posterize_load_effect(data);
 }
 
@@ -17,15 +20,19 @@ void posterize_destroy(retro_effects_filter_data_t *filter)
 	if (data->effect_posterize) {
 		gs_effect_destroy(data->effect_posterize);
 	}
-	//if (data->source_mask_texrender) {
-	//	gs_texrender_destroy(data->source_mask_texrender);
-	//}
+
+	if (data->color_source) {
+		obs_weak_source_release(data->color_source);
+	}
 
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
-	// obs_data_unset_user_value(settings, "ca_type");
-
+	obs_data_unset_user_value(settings, "posterize_levels");
+	obs_data_unset_user_value(settings, "posterize_technique");
+	obs_data_unset_user_value(settings, "posterize_map_source");
+	obs_data_unset_user_value(settings, "posterize_color_1");
+	obs_data_unset_user_value(settings, "posterize_color_2");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
@@ -76,8 +83,6 @@ void posterize_filter_defaults(obs_data_t *settings) {
 void posterize_filter_properties(retro_effects_filter_data_t *data,
 				 obs_properties_t *props)
 {
-	obs_data_t *settings = obs_source_get_settings(data->base->context);
-
 	obs_properties_add_int(props, "posterize_levels", "Levels", 2, 256,
 			       1);
 
@@ -116,7 +121,6 @@ void posterize_filter_properties(retro_effects_filter_data_t *data,
 	obs_properties_add_color_alpha(
 		props, "posterize_color_2",
 		obs_module_text("RetroEffects.Posterize.Color2"));
-	posterize_filter_defaults(settings);
 }
 
 void posterize_filter_video_render(retro_effects_filter_data_t *data)
