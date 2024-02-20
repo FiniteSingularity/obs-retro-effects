@@ -7,6 +7,9 @@ void dither_create(retro_effects_filter_data_t *filter)
 	filter->active_filter_data = data;
 	data->reload_effect = false;
 	dither_set_functions(filter);
+	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	dither_filter_defaults(settings);
+	obs_data_release(settings);
 	dither_load_effect(data);
 }
 
@@ -71,7 +74,6 @@ void dither_filter_defaults(obs_data_t *settings)
 void dither_filter_properties(retro_effects_filter_data_t *data,
 					    obs_properties_t *props)
 {
-	obs_data_t *settings = obs_source_get_settings(data->base->context);
 
 	// Dither Type
 	obs_property_t *dither_type = obs_properties_add_list(
@@ -121,9 +123,7 @@ void dither_filter_properties(retro_effects_filter_data_t *data,
 	// Gamma
 	obs_properties_add_float_slider(
 		props, "dither_gamma",
-		obs_module_text("RetroEffects.Dither.Gamma"), 0.25, 2.0,
-		0.025);
-	dither_filter_defaults(settings);
+		obs_module_text("RetroEffects.Dither.Gamma"), 0.25, 2.0, 0.025);
 
 	p = obs_properties_add_float_slider(
 		props,
@@ -136,7 +136,6 @@ void dither_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.Dither.OffsetY"), -4000.0, 4000.0,
 		1.0);
 	obs_property_float_set_suffix(p, "px");
-	obs_data_release(settings);
 }
 
 void dither_filter_video_render(retro_effects_filter_data_t *data)
