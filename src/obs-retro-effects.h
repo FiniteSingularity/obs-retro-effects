@@ -19,6 +19,8 @@
 #define RETRO_FILTER_DITHER_LABEL "RetroEffects.Dither"
 #define RETRO_FILTER_CRT 6
 #define RETRO_FILTER_CRT_LABEL "RetroEffects.CRT"
+#define RETRO_FILTER_NTSC 7
+#define RETRO_FILTER_NTSC_LABEL "RetroEffects.NTSC"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;

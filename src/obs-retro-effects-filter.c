@@ -6,6 +6,7 @@
 #include "filters/posterize.h"
 #include "filters/dither.h"
 #include "filters/crt.h"
+#include "filters/ntsc.h"
 #include "blur/blur.h"
 
 struct obs_source_info obs_retro_effects_filter = {
@@ -164,6 +165,9 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 	obs_property_list_add_int(filter_list,
 				  obs_module_text(RETRO_FILTER_CRT_LABEL),
 				  RETRO_FILTER_CRT);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_NTSC_LABEL),
+				  RETRO_FILTER_NTSC);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -215,6 +219,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 		break;
 	case RETRO_FILTER_CRT:
 		crt_create(filter);
+		break;
+	case RETRO_FILTER_NTSC:
+		ntsc_create(filter);
 		break;
 	}
 }

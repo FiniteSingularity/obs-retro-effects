@@ -10,6 +10,17 @@ sampler_state textureSampler{
     MaxLOD = 0;
 };
 
+float3 rgb2yiq(float3 color)
+{
+	float3x3 yiq = {
+		0.2989, 0.5959, 0.2115,
+		0.5870, -0.2744, -0.5229,
+		0.1140, -0.3216, 0.3114
+	};
+
+	return mul(yiq, color);
+}
+
 struct VertData
 {
 	float4 pos : POSITION;
@@ -25,7 +36,9 @@ VertData mainTransform(VertData v_in)
 float4 mainImage(VertData v_in) : TARGET
 {
 	float4 color = image.Sample(textureSampler, v_in.uv);
-	return color;
+	float3 yiq = rgb2yiq(color.rgb);
+	
+	return float4(yiq, color.a);
 }
 
 technique Draw
