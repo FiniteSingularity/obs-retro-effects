@@ -24,6 +24,15 @@ sampler_state textureSampler{
     MaxLOD = 0;
 };
 
+sampler_state borderSampler{
+    Filter = Linear;
+    AddressU = Border;
+    AddressV = Border;
+    MinLOD = 0;
+    MaxLOD = 0;
+    BorderColor = FF000000;
+};
+
 
 float3 rgb2yiq(float3 c)
 {
@@ -48,11 +57,27 @@ VertData mainTransform(VertData v_in)
 
 float4 mainImage(VertData v_in) : TARGET
 {
+	// Allow for a 10% of viewport black bar to the top annd bottom of the screen
+	// and a 5% viewport black bar to the left/right of the screen.
+	float height = uv_size.y * 1.10;
+	float width = uv_size.x * 1.05;
+	
 	float2 coord = v_in.uv * uv_size;
+
 	float noise = hash31(float3(1.0, coord.y, frame));
-	float tuning_error =  noise * tuning_offset;
+
+	// Calculate tuning error- if tuning error is less than 900, noise * tuning error, otherwise
+	// increase this value greatly.  Tuning error is used to offset the x-offset/smear
+	float tuning_error = abs(tuning_offset) < 900.0 ? noise * tuning_offset : noise * (900.0 + (tuning_offset - 900) * 10.0);
 	tuning_error = noise < 0.996 ? tuning_error : tuning_error * 3.1;
-	float4 color = image.Sample(textureSampler, (coord + float2(tuning_error, y_offset)) / uv_size);
+
+	float2 offset_coord = coord + float2(tuning_error, y_offset);
+
+	// Wrap the X and the Y coordinate offset including black bars.
+	offset_coord.y = mod(offset_coord.y, height);
+	offset_coord.x = mod(offset_coord.x, width);
+
+	float4 color = image.Sample(borderSampler, offset_coord / uv_size);
 	float3 yiq = rgb2yiq(color.rgb);
 
 	// Luma Noise

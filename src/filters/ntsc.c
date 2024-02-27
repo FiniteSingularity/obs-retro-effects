@@ -78,76 +78,98 @@ void ntsc_filter_defaults(obs_data_t *settings) {
 void ntsc_filter_properties(retro_effects_filter_data_t *data,
 			    obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
+
 	obs_properties_add_float_slider(
 		props, "ntsc_tuning_offset",
 		obs_module_text("RetroEffects.NTSC.TuningOffset"), -1000.0, 1000.0, 0.1);
-	obs_property_t *p = obs_properties_add_float_slider(
-		props, "ntsc_luma_noise",
+	obs_property_t *p = NULL;
+
+	obs_properties_t *luma_settings = obs_properties_create();
+
+	p = obs_properties_add_float_slider(
+		luma_settings, "ntsc_luma_noise",
 		obs_module_text("RetroEffects.NTSC.LumaNoise"), 0.0, 100.0,
 		0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "ntsc_luma_band_size",
+		luma_settings, "ntsc_luma_band_size",
 		obs_module_text("RetroEffects.NTSC.LumaBandSize"), 0.0, 100.0,
 		0.1);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_float_slider(
-		props, "ntsc_luma_band_strength",
+		luma_settings, "ntsc_luma_band_strength",
 		obs_module_text("RetroEffects.NTSC.LumaBandStrength"), 0.0, 400.0,
 		0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	obs_properties_add_int_slider(
-		props, "ntsc_luma_band_count",
+		luma_settings, "ntsc_luma_band_count",
 		obs_module_text("RetroEffects.NTSC.LumaBandCount"), 1,
 		8, 1);
 
+	obs_properties_add_group(
+		props, "ntsc_luma_settings",
+		obs_module_text("RetroEffects.NTSC.Luma"),
+		OBS_GROUP_NORMAL, luma_settings);
+
+	obs_properties_t *chroma_settings = obs_properties_create();
 
 	p = obs_properties_add_float_slider(
-		props, "ntsc_chroma_bleed_size",
-		obs_module_text("RetroEffects.NTSC.LumaChromaBleedSize"), 0.0, 100.0,
+		chroma_settings, "ntsc_chroma_bleed_size",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedSize"), 0.0, 100.0,
 		0.1);
 	obs_property_float_set_suffix(p, "px");
 
 	obs_properties_add_int_slider(
-		props, "ntsc_chroma_bleed_steps",
-		obs_module_text("RetroEffects.NTSC.LumaChromaBleedSteps"), 1, 30, 1);
+		chroma_settings, "ntsc_chroma_bleed_steps",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedSteps"), 1, 30, 1);
 
 	p = obs_properties_add_float_slider(
-		props, "ntsc_chroma_bleed_strength",
-		obs_module_text("RetroEffects.NTSC.LumaChromaBleedStrength"), 0.0,
+		chroma_settings, "ntsc_chroma_bleed_strength",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedStrength"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
+	obs_properties_add_group(props, "ntsc_chroma_settings",
+		obs_module_text("RetroEffects.NTSC.Chroma"),
+		OBS_GROUP_NORMAL, chroma_settings);
+
+	obs_properties_t *picture_adjustment = obs_properties_create();
+
 	p = obs_properties_add_float_slider(
-		props, "ntsc_brightness",
+		picture_adjustment, "ntsc_brightness",
 		obs_module_text("RetroEffects.NTSC.Brightness"),
 		0.0, 200.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "ntsc_saturation",
+		picture_adjustment, "ntsc_saturation",
 		obs_module_text("RetroEffects.NTSC.Saturation"), 0.0, 200.0,
 		0.1);
 	obs_property_float_set_suffix(p, "%");
+
+	obs_properties_add_group(props, "ntsc_picture",
+		obs_module_text("RetroEffects.NTSC.Picture"),
+		OBS_GROUP_NORMAL, picture_adjustment);
 }
 
 void ntsc_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
 {
 	ntsc_filter_data_t *filter = data->active_filter_data;
 
-	float height = (float)data->base->height;
+	float height = (float)data->base->height * 1.10f;
 	if (filter->tuning_offset <= 20.0f) {
 		filter->y_offset = floorf(filter->y_offset / 1.8f);
 		return;
 	}
 
 	float y_increment =
-		(filter->tuning_offset-20.0f) * ((height + 20.0f) / 400.0f);
+		(filter->tuning_offset-20.0f) * ((height) / 400.0f);
 	filter->y_offset += y_increment;
-	filter->y_offset = fmodf(filter->y_offset, height + 20.0f);
+	filter->y_offset = fmodf(filter->y_offset, height);
 }
 
 void ntsc_filter_video_render(retro_effects_filter_data_t *data)
