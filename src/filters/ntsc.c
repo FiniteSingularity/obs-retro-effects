@@ -158,6 +158,7 @@ void ntsc_filter_properties(retro_effects_filter_data_t *data,
 
 void ntsc_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
 {
+	UNUSED_PARAMETER(seconds);
 	ntsc_filter_data_t *filter = data->active_filter_data;
 
 	float height = (float)data->base->height * 1.10f;
