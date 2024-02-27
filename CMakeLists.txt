@@ -42,6 +42,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/frame-skip.h
 	src/filters/interlace.c
 	src/filters/interlace.h
+	src/filters/ntsc.c
+	src/filters/ntsc.h
 	src/filters/posterize.c
 	src/filters/posterize.h
 	src/version.h)

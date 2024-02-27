@@ -6,6 +6,7 @@
 #include "filters/posterize.h"
 #include "filters/dither.h"
 #include "filters/crt.h"
+#include "filters/ntsc.h"
 #include "blur/blur.h"
 
 struct obs_source_info obs_retro_effects_filter = {
@@ -46,6 +47,7 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	filter->base->param_output_image = NULL;
 	filter->base->rendered = false;
 	filter->base->rendering = false;
+	filter->base->frame = 0;
 	filter->frames_skipped = 0;
 	filter->initial_load = true;
 
@@ -164,6 +166,9 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 	obs_property_list_add_int(filter_list,
 				  obs_module_text(RETRO_FILTER_CRT_LABEL),
 				  RETRO_FILTER_CRT);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_NTSC_LABEL),
+				  RETRO_FILTER_NTSC);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -216,6 +221,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 	case RETRO_FILTER_CRT:
 		crt_create(filter);
 		break;
+	case RETRO_FILTER_NTSC:
+		ntsc_create(filter);
+		break;
 	}
 }
 
@@ -229,7 +237,7 @@ static void retro_effects_filter_video_tick(void *data, float seconds)
 	}
 	filter->base->width = (uint32_t)obs_source_get_base_width(target);
 	filter->base->height = (uint32_t)obs_source_get_base_height(target);
-
+	filter->base->frame += 1u;
 	if (filter->filter_video_tick) {
 		filter->filter_video_tick(filter, seconds);
 	}

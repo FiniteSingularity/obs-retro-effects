@@ -83,6 +83,7 @@ void posterize_filter_defaults(obs_data_t *settings) {
 void posterize_filter_properties(retro_effects_filter_data_t *data,
 				 obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	obs_properties_add_int(props, "posterize_levels", "Levels", 2, 256,
 			       1);
 

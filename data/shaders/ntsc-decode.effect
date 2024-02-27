@@ -1,0 +1,139 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float luma_band_size;
+uniform float luma_band_strength;
+uniform int luma_band_count;
+uniform float chroma_bleed_size;
+uniform int chroma_bleed_steps;
+uniform float chroma_bleed_strength;
+
+uniform float saturation;
+uniform float brightness;
+
+#define PI  3.1415926535
+#define TAU 6.2831853071
+#define EPS 1.e-8
+
+float3 yiq2rgb(float3 c) {
+	return float3(
+		dot(c, float3(1.0,  0.9560,  0.6210)),
+		dot(c, float3(1.0, -0.2720, -0.6474)),
+		dot(c, float3(1.0, -1.1060,  1.7046))
+	);
+}
+
+float decay_wave(float x, float cycles)
+{
+	float x2 = x * PI * cycles;
+	return cos(x2) * (1.0 - x);
+}
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float4 ntsc = image.Sample(textureSampler, v_in.uv);
+
+	// Denormalize the current point's phase angle
+	ntsc.z = ntsc.z * TAU - PI;
+
+	// *** Luminance Banding ***
+	// Simulates luminance banding with adjustable number of bands.
+	// Uses cos(x*pi*cycles) * (1.0 - x) as a decaying wave function
+	// Samples surrounding pixels, and applies decaying wave
+	// convolution to generate luma bands around high contrast areas.
+
+	// Sample current pixel luma value, with weight 1.0
+	float luma_band = ntsc.x;
+	float luma_coef_sum = 1.0;
+	for (int i = 1; i <= luma_band_size; i++)
+	{
+		float2 step = float2(float(i), 0.0);
+		// Sample at +/- i step
+		float l1 = image.Sample(textureSampler, (coord + step) / uv_size).x;
+		float l2 = image.Sample(textureSampler, (coord - step) / uv_size).x;
+		// Get sample weight from decaying cos wave function
+		float coef = decay_wave(float(i) / luma_band_size, luma_band_count);
+		luma_coef_sum += coef * 2.0;
+		// Sum samples * their weight.
+		luma_band += (l1 + l2) * coef;
+	}
+	// Normalize weighted sum by sum of weights used.
+	luma_band /= luma_coef_sum;
+	// Apply luma_band value scaled by luma_band_strength value
+	ntsc.x = (1.0 - luma_band_strength) * ntsc.x + luma_band_strength * luma_band;
+
+	// *** Chroma Bleeding ***
+	// Same concept as luma banding, but applied to chroma values.
+	// Use a smoothstep convolution to sample surrounding pixels.
+
+	// Sample current pixel chroma values with weight 1.0
+	float chroma_coef_sum = 1.0;
+	float2 chroma_bleed = float2(ntsc.yz);
+	float step_size = chroma_bleed_size / float(chroma_bleed_steps);
+	for (int i = 1; i <= chroma_bleed_steps; i++)
+	{
+		float2 step = float2(float(i) * step_size, 0.0);
+		// Sample the + and - step
+		float2 c1 = image.Sample(textureSampler, (coord + step) / uv_size).yz;
+		float2 c2 = image.Sample(textureSampler, (coord - step) / uv_size).yz;
+		// Denormalize the phase angle
+		c1.y = c1.y * TAU - PI;
+		c2.y = c2.y * TAU - PI;
+		// Use smoothstep as convolution
+		float coef = smoothstep(0.0, 1.0, 1.0 - float(i) / float(chroma_bleed_steps));
+		chroma_coef_sum += coef * 2.0;
+		// Add weighted contribution to bleed
+		chroma_bleed += (c1 + c2) * coef;
+	}
+	// Normalize weighted sum by weight coefficients
+	chroma_bleed /= chroma_coef_sum;
+
+	// Apply chroma bleed scaled by chroma_bleed_strength
+	ntsc.yz = (1.0 - chroma_bleed_strength) * ntsc.yz + chroma_bleed_strength * chroma_bleed;
+
+	// Apply receiver brightness and saturation adjustments.
+	ntsc.x *= brightness;
+	ntsc.y *= saturation;
+	
+	// Reconstruct yiq values from ntsc luminance (.x), iq length (.y), and phase angle (.z).
+	// Luminance passes through as Y
+	// I = cos(phase)*iq_length
+	// Q = sin(phase)*iq_length
+	float sz;
+	float cz;
+	sincos(ntsc.z, sz, cz);
+	float3 yiq = ntsc.xyy * float3(1.0, cz, sz);
+
+	// Convert YIQ to RGB and return.  Alpha is passed through from original source.
+	return float4(yiq2rgb(yiq), ntsc.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}

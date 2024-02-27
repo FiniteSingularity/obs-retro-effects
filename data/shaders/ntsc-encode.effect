@@ -1,0 +1,110 @@
+#include "noise-functions.effect"
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float frame;
+uniform float y_offset;
+uniform float tuning_offset;
+uniform float luma_noise;
+
+#define PI  3.1415926535
+#define TAU 6.2831853071
+
+float mod(float x, float y)
+{
+	return x - y * floor(x / y);
+}
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Wrap;
+    AddressV = Wrap;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+sampler_state borderSampler{
+    Filter = Linear;
+    AddressU = Border;
+    AddressV = Border;
+    MinLOD = 0;
+    MaxLOD = 0;
+    BorderColor = FF000000;
+};
+
+
+float3 rgb2yiq(float3 c)
+{
+	return float3(
+		dot(c, float3(0.2979,  0.5870,  0.1140)),
+		dot(c, float3(0.5959, -0.2744, -0.3216)),
+		dot(c, float3(0.2115, -0.5229,  0.3114))
+	);
+}
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	// Allow for a 10% of viewport black bar to the top annd bottom of the screen
+	// and a 5% viewport black bar to the left/right of the screen.
+	float height = uv_size.y * 1.10;
+	float width = uv_size.x * 1.05;
+	
+	float2 coord = v_in.uv * uv_size;
+
+	float noise = hash31(float3(1.0, coord.y, frame));
+
+	// Calculate tuning error- if tuning error is less than 900, noise * tuning error, otherwise
+	// increase this value greatly.  Tuning error is used to offset the x-offset/smear
+	float tuning_error = abs(tuning_offset) < 900.0 ? noise * tuning_offset : noise * (900.0 + (tuning_offset - 900) * 10.0);
+	tuning_error = noise < 0.996 ? tuning_error : tuning_error * 3.1;
+
+	float2 offset_coord = coord + float2(tuning_error, y_offset);
+
+	// Wrap the X and the Y coordinate offset including black bars.
+	offset_coord.y = mod(offset_coord.y, height);
+	offset_coord.x = mod(offset_coord.x, width);
+
+	float4 color = image.Sample(borderSampler, offset_coord / uv_size);
+	float3 yiq = rgb2yiq(color.rgb);
+
+	// Luma Noise
+	yiq.x += 2.0 * (hash31(float3(coord + 2000.0, frame)) - 0.5) * luma_noise;
+
+	// Split YIQ into portions of the NTSC signal:
+	// ntsc.x is luminance signal
+	// ntsc.y is color wave amplitude (Saturation), which is the length of the IQ vector
+	// ntsc.y is the color wave phase shift (hue), which is the angle of the IQ line	
+	float saturation = length(yiq.yz);
+	float phase_shift = (atan2(yiq.z, yiq.y) + PI)/TAU;
+	float3 ntsc = float3(yiq.x, saturation, phase_shift);
+
+	// Simulate signal tuning error by dropping luminance value towards random noise
+	float signal_error = hash31(float3(coord, frame)) * abs(tuning_offset) / 1000.0;
+	
+	ntsc.x = ntsc.x * (1.0 - abs(tuning_offset) / 1000.0) + abs(signal_error);
+	//ntsc.yz -= 0.25 * signal_error;
+	ntsc.yz *= 1.0 - saturate(abs(tuning_offset) / 500.0);
+	return float4(ntsc, color.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
