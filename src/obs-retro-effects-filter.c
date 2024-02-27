@@ -47,6 +47,7 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	filter->base->param_output_image = NULL;
 	filter->base->rendered = false;
 	filter->base->rendering = false;
+	filter->base->frame = 0;
 	filter->frames_skipped = 0;
 	filter->initial_load = true;
 
@@ -236,7 +237,7 @@ static void retro_effects_filter_video_tick(void *data, float seconds)
 	}
 	filter->base->width = (uint32_t)obs_source_get_base_width(target);
 	filter->base->height = (uint32_t)obs_source_get_base_height(target);
-
+	filter->base->frame += 1u;
 	if (filter->filter_video_tick) {
 		filter->filter_video_tick(filter, seconds);
 	}

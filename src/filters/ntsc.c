@@ -39,20 +39,121 @@ void ntsc_destroy(retro_effects_filter_data_t *filter)
 void ntsc_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 {
 	ntsc_filter_data_t *filter = data->active_filter_data;
+	filter->tuning_offset = (float)obs_data_get_double(settings, "ntsc_tuning_offset");
+	filter->luma_noise =
+		(float)obs_data_get_double(settings, "ntsc_luma_noise")/100.0f;
+	filter->luma_band_size =
+		(float)obs_data_get_double(settings, "ntsc_luma_band_size");
+	filter->luma_band_strength =
+		(float)obs_data_get_double(settings, "ntsc_luma_band_strength")/400.0f;
+	filter->luma_band_count =
+		(int)obs_data_get_int(settings, "ntsc_luma_band_count") * 2 + 1;
+
+	filter->chroma_bleed_size =
+		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_size");
+	filter->chroma_bleed_strength =
+		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_strength") / 100.0f;
+	filter->chroma_bleed_steps =
+		(int)obs_data_get_int(settings, "ntsc_chroma_bleed_steps");
+
+	filter->brightness = (float)obs_data_get_double(settings, "ntsc_brightness") / 100.0f;
+	filter->saturation = (float)obs_data_get_double(settings, "ntsc_saturation") / 100.0f;
 }
 
-void ntsc_filter_defaults(obs_data_t *settings) {}
+void ntsc_filter_defaults(obs_data_t *settings) {
+	obs_data_set_default_double(settings, "ntsc_tuning_offset", 1.0);
+	obs_data_set_default_double(settings, "ntsc_luma_noise", 0.0);
+	obs_data_set_default_double(settings, "ntsc_luma_band_size", 10.0);
+	obs_data_set_default_double(settings, "ntsc_luma_band_strength", 70.0);
+	obs_data_set_default_int(settings, "ntsc_luma_band_count", 1);
+
+	obs_data_set_default_double(settings, "ntsc_chroma_bleed_size", 50.0);
+	obs_data_set_default_double(settings, "ntsc_chroma_bleed_strength", 70.0);
+	obs_data_set_default_int(settings, "ntsc_chroma_bleed_steps", 15);
+
+	obs_data_set_default_double(settings, "ntsc_brightness", 100.0);
+	obs_data_set_default_double(settings, "ntsc_saturation", 100.0);
+}
 
 void ntsc_filter_properties(retro_effects_filter_data_t *data,
 			    obs_properties_t *props)
 {
+	obs_properties_add_float_slider(
+		props, "ntsc_tuning_offset",
+		obs_module_text("RetroEffects.NTSC.TuningOffset"), -1000.0, 1000.0, 0.1);
+	obs_property_t *p = obs_properties_add_float_slider(
+		props, "ntsc_luma_noise",
+		obs_module_text("RetroEffects.NTSC.LumaNoise"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_luma_band_size",
+		obs_module_text("RetroEffects.NTSC.LumaBandSize"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_luma_band_strength",
+		obs_module_text("RetroEffects.NTSC.LumaBandStrength"), 0.0, 400.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	obs_properties_add_int_slider(
+		props, "ntsc_luma_band_count",
+		obs_module_text("RetroEffects.NTSC.LumaBandCount"), 1,
+		8, 1);
+
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_chroma_bleed_size",
+		obs_module_text("RetroEffects.NTSC.LumaChromaBleedSize"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "px");
+
+	obs_properties_add_int_slider(
+		props, "ntsc_chroma_bleed_steps",
+		obs_module_text("RetroEffects.NTSC.LumaChromaBleedSteps"), 1, 30, 1);
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_chroma_bleed_strength",
+		obs_module_text("RetroEffects.NTSC.LumaChromaBleedStrength"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_brightness",
+		obs_module_text("RetroEffects.NTSC.Brightness"),
+		0.0, 200.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "ntsc_saturation",
+		obs_module_text("RetroEffects.NTSC.Saturation"), 0.0, 200.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+}
+
+void ntsc_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
+{
+	ntsc_filter_data_t *filter = data->active_filter_data;
+
+	float height = (float)data->base->height;
+	if (filter->tuning_offset <= 20.0f) {
+		filter->y_offset = floorf(filter->y_offset / 1.8f);
+		return;
+	}
+
+	float y_increment =
+		(filter->tuning_offset-20.0f) * ((height + 20.0f) / 400.0f);
+	filter->y_offset += y_increment;
+	filter->y_offset = fmodf(filter->y_offset, height + 20.0f);
 }
 
 void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 {
 	base_filter_data_t *base = data->base;
 	ntsc_filter_data_t *filter = data->active_filter_data;
-
 	get_input_source(base);
 	if (!base->input_texture_generated || filter->loading_effect) {
 		base->rendering = false;
@@ -81,12 +182,31 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 	if (filter->param_encode_image) {
 		gs_effect_set_texture(filter->param_encode_image, image);
 	}
+	if (filter->param_encode_tuning_offset) {
+		gs_effect_set_float(filter->param_encode_tuning_offset,
+				    filter->tuning_offset);
+	}
+	if (filter->param_encode_frame) {
+		gs_effect_set_float(filter->param_encode_frame,
+				    (float)base->frame);
+	}
+
+	if (filter->param_encode_y_offset) {
+		gs_effect_set_float(filter->param_encode_y_offset,
+				    fmaxf(0.0f, filter->y_offset - 20.0f));
+	}
+
+	if (filter->param_encode_luma_noise) {
+		gs_effect_set_float(filter->param_encode_luma_noise,
+				    filter->luma_noise);
+	}
 
 	set_render_parameters();
 	set_blending_parameters();
 
 	struct dstr technique;
 	dstr_init_copy(&technique, "Draw");
+
 
 	if (gs_texrender_begin(filter->encode_texrender, base->width,
 			       base->height)) {
@@ -116,10 +236,44 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 				      image_encoded);
 	}
 
+	if (filter->param_decode_luma_band_size) {
+		gs_effect_set_float(filter->param_decode_luma_band_size,
+				    filter->luma_band_size);
+	}
+	if (filter->param_decode_luma_band_strength) {
+		gs_effect_set_float(filter->param_decode_luma_band_strength,
+				    filter->luma_band_strength);
+	}
+	if (filter->param_decode_luma_band_count) {
+		gs_effect_set_int(filter->param_decode_luma_band_count,
+				    filter->luma_band_count);
+	}
+
+	if (filter->param_decode_chroma_bleed_size) {
+		gs_effect_set_float(filter->param_decode_chroma_bleed_size,
+				    filter->chroma_bleed_size);
+	}
+	if (filter->param_decode_chroma_bleed_strength) {
+		gs_effect_set_float(filter->param_decode_chroma_bleed_strength,
+				    filter->chroma_bleed_strength);
+	}
+	if (filter->param_decode_chroma_bleed_steps) {
+		gs_effect_set_int(filter->param_decode_chroma_bleed_steps,
+				  filter->chroma_bleed_steps);
+	}
+	if (filter->param_decode_brightness) {
+		gs_effect_set_float(filter->param_decode_brightness,
+				    filter->brightness);
+	}
+	if (filter->param_decode_chroma_bleed_steps) {
+		gs_effect_set_float(filter->param_decode_saturation,
+				  filter->saturation);
+	}
+
 	set_render_parameters();
 	set_blending_parameters();
 
-	dstr_init_copy(&technique, "Draw");
+	dstr_copy(&technique, "Draw");
 
 	if (gs_texrender_begin(base->output_texrender, base->width,
 			       base->height)) {
@@ -140,7 +294,7 @@ static void ntsc_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_destroy = ntsc_destroy;
 	filter->filter_defaults = ntsc_filter_defaults;
 	filter->filter_update = ntsc_filter_update;
-	filter->filter_video_tick = NULL;
+	filter->filter_video_tick = ntsc_filter_video_tick;
 }
 
 static void ntsc_load_effects(ntsc_filter_data_t *filter)
@@ -198,6 +352,14 @@ static void ntsc_load_effect_encode(ntsc_filter_data_t *filter)
 				filter->param_encode_image = param;
 			} else if (strcmp(info.name, "uv_size") == 0) {
 				filter->param_encode_uv_size = param;
+			} else if (strcmp(info.name, "tuning_offset") == 0) {
+				filter->param_encode_tuning_offset = param;
+			} else if (strcmp(info.name, "frame") == 0) {
+				filter->param_encode_frame = param;
+			} else if (strcmp(info.name, "y_offset") == 0) {
+				filter->param_encode_y_offset = param;
+			} else if (strcmp(info.name, "luma_noise") == 0) {
+				filter->param_encode_luma_noise = param;
 			}
 		}
 	}
@@ -250,6 +412,22 @@ static void ntsc_load_effect_decode(ntsc_filter_data_t *filter)
 				filter->param_decode_image = param;
 			} else if (strcmp(info.name, "uv_size") == 0) {
 				filter->param_decode_uv_size = param;
+			} else if (strcmp(info.name, "luma_band_size") == 0) {
+				filter->param_decode_luma_band_size = param;
+			} else if (strcmp(info.name, "luma_band_strength") == 0) {
+				filter->param_decode_luma_band_strength = param;
+			} else if (strcmp(info.name, "luma_band_count") == 0) {
+				filter->param_decode_luma_band_count = param;
+			} else if (strcmp(info.name, "chroma_bleed_size") == 0) {
+				filter->param_decode_chroma_bleed_size = param;
+			} else if (strcmp(info.name, "chroma_bleed_strength") == 0) {
+				filter->param_decode_chroma_bleed_strength = param;
+			} else if (strcmp(info.name, "chroma_bleed_steps") == 0) {
+				filter->param_decode_chroma_bleed_steps = param;
+			} else if (strcmp(info.name, "brightness") == 0) {
+				filter->param_decode_brightness = param;
+			} else if (strcmp(info.name, "saturation") == 0) {
+				filter->param_decode_saturation = param;
 			}
 		}
 	}
