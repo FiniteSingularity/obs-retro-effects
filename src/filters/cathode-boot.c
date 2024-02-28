@@ -39,6 +39,7 @@ void cathode_boot_filter_update(retro_effects_filter_data_t *data,
 		filter->reload_effect = false;
 		cathode_boot_load_effect(filter);
 	}
+	filter->progress = (float)obs_data_get_double(settings, "cathode_booot_progress") / 100.0f;
 }
 
 void cathode_boot_filter_defaults(obs_data_t *settings) {}
@@ -46,6 +47,10 @@ void cathode_boot_filter_defaults(obs_data_t *settings) {}
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
 				    obs_properties_t *props)
 {
+	obs_property_t *p = obs_properties_add_float_slider(
+		props, "cathode_booot_progress",
+		obs_module_text("RetroEffects.CathodeBoot.Progress"), 0.0,
+		100.0, 0.1);
 
 	// cathode_boot Type
 }
@@ -80,6 +85,9 @@ void cathode_boot_filter_video_render(retro_effects_filter_data_t *data)
 	}
 	if (filter->param_image) {
 		gs_effect_set_texture(filter->param_image, image);
+	}
+	if (filter->param_progress) {
+		gs_effect_set_float(filter->param_progress, filter->progress);
 	}
 
 	set_render_parameters();
@@ -158,6 +166,8 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 				filter->param_image = param;
 			} else if (strcmp(info.name, "uv_size") == 0) {
 				filter->param_uv_size = param;
+			} else if (strcmp(info.name, "progress") == 0) {
+				filter->param_progress = param;
 			}
 		}
 	}

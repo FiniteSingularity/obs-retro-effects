@@ -9,6 +9,9 @@ struct cathode_boot_filter_data {
 
 	gs_eparam_t *param_image;
 	gs_eparam_t *param_uv_size;
+	gs_eparam_t *param_progress;
+
+	float progress;
 
 	bool loading_effect;
 	bool reload_effect;

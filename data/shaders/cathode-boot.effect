@@ -1,13 +1,15 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
+uniform float progress;
 
 sampler_state textureSampler{
     Filter = Linear;
-    AddressU = Clamp;
-    AddressV = Clamp;
+    AddressU = Border;
+    AddressV = Border;
     MinLOD = 0;
     MaxLOD = 0;
+    BorderColor = FF000000;
 };
 
 struct VertData
@@ -24,8 +26,16 @@ VertData mainTransform(VertData v_in)
 
 float4 mainImage(VertData v_in) : TARGET
 {
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	return float4(0.0, color.gba);
+	float2 d = v_in.uv - float2(0.5, 0.5);
+	float2 progress_norm = float2(saturate((progress - 0.5) / 0.45), saturate(progress / 0.7));
+	float progress_fade = saturate((progress - 0.95) / 0.05);
+	d *= (1.0 + 100.0 * progress_norm);
+	float2 uv = float2(0.5, 0.5) + d;
+	float2 ap = step(abs(d), float2(0.5, 0.5)); // Thanks to twitch viewer
+	bool inside = ap.x * ap.y > 0.;           // FuleSnabel
+	float4 color = image.Sample(textureSampler, uv);
+	color.rgb += progress;
+	return inside ? color * (1.0 - progress_fade) + (progress_fade) * float4(0.0, 0.0, 0.0, 1.0) : float4(0.0, 0.0, 0.0, 1.0);
 }
 
 technique Draw
