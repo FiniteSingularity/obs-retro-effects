@@ -124,7 +124,7 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 	char *shader_text = NULL;
 	struct dstr filename = {0};
 	dstr_cat(&filename, obs_get_module_data_path(obs_current_module()));
-	dstr_cat(&filename, "/shaders/cathode_boot-blue-noise.effect");
+	dstr_cat(&filename, "/shaders/cathode-boot.effect");
 	shader_text = load_shader_from_file(filename.array);
 	char *errors = NULL;
 	dstr_free(&filename);
@@ -141,7 +141,7 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 	bfree(shader_text);
 	if (filter->effect_cathode_boot == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load cathode_boot-blue-noise.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load cathode_boot-blue-noise.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);
