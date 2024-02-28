@@ -26,8 +26,10 @@ void cathode_boot_destroy(retro_effects_filter_data_t *filter)
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "cathode_boot_progress");
+	obs_data_unset_user_value(settings, "cathode_boot_vert_thickness");
 	obs_data_unset_user_value(settings, "cathode_boot_vert_start");
 	obs_data_unset_user_value(settings, "cathode_boot_vert_end");
+	obs_data_unset_user_value(settings, "cathode_boot_horiz_thickness");
 	obs_data_unset_user_value(settings, "cathode_boot_horiz_start");
 	obs_data_unset_user_value(settings, "cathode_boot_horiz_end");
 	obs_data_unset_user_value(settings, "cathode_boot_fade_start");
@@ -53,6 +55,9 @@ void cathode_boot_filter_update(retro_effects_filter_data_t *data,
 	filter->horiz_range.y = (float)obs_data_get_double(settings, "cathode_boot_horiz_end") / 100.0f;
 	filter->fade_range.x = (float)obs_data_get_double(settings, "cathode_boot_fade_start") / 100.0f;
 	filter->fade_range.y = (float)obs_data_get_double(settings, "cathode_boot_fade_end") / 100.0f;
+	filter->thickness.x = (float)obs_data_get_double(settings, "cathode_boot_horiz_thickness");
+	filter->thickness.y = (float)obs_data_get_double(settings, "cathode_boot_vert_thickness");
+	filter->glow_size = (float)obs_data_get_double(settings, "cathode_boot_glow_size");
 }
 
 void cathode_boot_filter_defaults(obs_data_t *settings) {
@@ -63,6 +68,10 @@ void cathode_boot_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "cathode_boot_horiz_end", 90.0);
 	obs_data_set_default_double(settings, "cathode_boot_fade_start", 90.0);
 	obs_data_set_default_double(settings, "cathode_boot_fade_end", 100.0);
+	obs_data_set_default_double(settings, "cathode_boot_vert_thickness", 1.0);
+	obs_data_set_default_double(settings, "cathode_boot_horiz_thickness", 1.0);
+	obs_data_set_default_double(settings, "cathode_boot_glow_size", 2.0);
+
 }
 
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
@@ -71,46 +80,76 @@ void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
 	obs_property_t *p = obs_properties_add_float_slider(
 		props, "cathode_boot_progress",
 		obs_module_text("RetroEffects.CathodeBoot.Progress"), 0.0,
-		100.0, 0.1);
+		100.0, 0.01);
 	obs_property_float_set_suffix(p, "%");
 
+	obs_properties_t *terminal_line = obs_properties_create();
+
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_vert_start",
+		terminal_line, "cathode_boot_vert_thickness",
+		obs_module_text("RetroEffects.CathodeBoot.VertThick"), 1.0,
+		30.0, 1.0);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_float_slider(
+		terminal_line, "cathode_boot_horiz_thickness",
+		obs_module_text("RetroEffects.CathodeBoot.HorizThick"), 1.0,
+		30.0, 1.0);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_float_slider(
+		terminal_line, "cathode_boot_glow_size",
+		obs_module_text("RetroEffects.CathodeBoot.GlowSize"), 1.0,
+		30.0, 1.0);
+	obs_property_float_set_suffix(p, "px");
+
+	obs_properties_add_group(
+		props, "cathode_boot_terminal_line",
+		obs_module_text("RetroEffects.CathodeBoot.TerminalLine"),
+		OBS_GROUP_NORMAL, terminal_line);
+
+	obs_properties_t *timing = obs_properties_create();
+
+	p = obs_properties_add_float_slider(
+		timing, "cathode_boot_vert_start",
 		obs_module_text("RetroEffects.CathodeBoot.VertStart"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_vert_end",
+		timing, "cathode_boot_vert_end",
 		obs_module_text("RetroEffects.CathodeBoot.VertEnd"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_horiz_start",
+		timing, "cathode_boot_horiz_start",
 		obs_module_text("RetroEffects.CathodeBoot.HorizStart"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_horiz_end",
+		timing, "cathode_boot_horiz_end",
 		obs_module_text("RetroEffects.CathodeBoot.HorizEnd"), 0.0, 100.0,
 		0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_fade_start",
+		timing, "cathode_boot_fade_start",
 		obs_module_text("RetroEffects.CathodeBoot.FadeStart"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
-		props, "cathode_boot_fade_end",
+		timing, "cathode_boot_fade_end",
 		obs_module_text("RetroEffects.CathodeBoot.FadeEnd"), 0.0,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
-	// cathode_boot Type
+	obs_properties_add_group(
+		props, "cathode_boot_timing",
+		obs_module_text("RetroEffects.CathodeBoot.Timing"),
+		OBS_GROUP_NORMAL, timing);
 }
 
 void cathode_boot_filter_video_render(retro_effects_filter_data_t *data)
@@ -158,6 +197,17 @@ void cathode_boot_filter_video_render(retro_effects_filter_data_t *data)
 
 	if (filter->param_fade_range) {
 		gs_effect_set_vec2(filter->param_fade_range, &filter->fade_range);
+	}
+
+	if (filter->param_thickness) {
+		struct vec2 thickness;
+		thickness.x = filter->thickness.x / (float)base->width;
+		thickness.y = filter->thickness.y / (float)base->height;
+		gs_effect_set_vec2(filter->param_thickness, &thickness);
+	}
+
+	if (filter->param_glow_size) {
+		gs_effect_set_float(filter->param_glow_size, filter->glow_size);
 	}
 
 	set_render_parameters();
@@ -244,6 +294,10 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 				filter->param_horiz_range = param;
 			} else if (strcmp(info.name, "fade_range") == 0) {
 				filter->param_fade_range = param;
+			} else if (strcmp(info.name, "thickness") == 0) {
+				filter->param_thickness = param;
+			} else if (strcmp(info.name, "glow_size") == 0) {
+				filter->param_glow_size = param;
 			}
 		}
 	}

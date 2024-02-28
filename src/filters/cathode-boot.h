@@ -13,14 +13,18 @@ struct cathode_boot_filter_data {
 	gs_eparam_t *param_vert_range;
 	gs_eparam_t *param_horiz_range;
 	gs_eparam_t *param_fade_range;
+	gs_eparam_t *param_thickness;
+	gs_eparam_t *param_glow_size;
 
 	float progress;
 
 	bool loading_effect;
 	bool reload_effect;
+	float glow_size;
 	struct vec2 vert_range;
 	struct vec2 horiz_range;
 	struct vec2 fade_range;
+	struct vec2 thickness;
 };
 
 extern void cathode_boot_create(retro_effects_filter_data_t *filter);

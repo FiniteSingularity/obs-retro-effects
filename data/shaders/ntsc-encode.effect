@@ -20,16 +20,12 @@ sampler_state textureSampler{
     Filter = Linear;
     AddressU = Wrap;
     AddressV = Wrap;
-    MinLOD = 0;
-    MaxLOD = 0;
 };
 
 sampler_state borderSampler{
     Filter = Linear;
     AddressU = Border;
     AddressV = Border;
-    MinLOD = 0;
-    MaxLOD = 0;
     BorderColor = FF000000;
 };
 
