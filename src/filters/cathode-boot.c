@@ -25,6 +25,13 @@ void cathode_boot_destroy(retro_effects_filter_data_t *filter)
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "cathode_boot_progress");
+	obs_data_unset_user_value(settings, "cathode_boot_vert_start");
+	obs_data_unset_user_value(settings, "cathode_boot_vert_end");
+	obs_data_unset_user_value(settings, "cathode_boot_horiz_start");
+	obs_data_unset_user_value(settings, "cathode_boot_horiz_end");
+	obs_data_unset_user_value(settings, "cathode_boot_fade_start");
+	obs_data_unset_user_value(settings, "cathode_boot_fade_end");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
@@ -39,18 +46,69 @@ void cathode_boot_filter_update(retro_effects_filter_data_t *data,
 		filter->reload_effect = false;
 		cathode_boot_load_effect(filter);
 	}
-	filter->progress = (float)obs_data_get_double(settings, "cathode_booot_progress") / 100.0f;
+	filter->progress = (float)obs_data_get_double(settings, "cathode_boot_progress") / 100.0f;
+	filter->vert_range.x = (float)obs_data_get_double(settings, "cathode_boot_vert_start") / 100.0f;
+	filter->vert_range.y = (float)obs_data_get_double(settings, "cathode_boot_vert_end") / 100.0f;
+	filter->horiz_range.x = (float)obs_data_get_double(settings, "cathode_boot_horiz_start") / 100.0f;
+	filter->horiz_range.y = (float)obs_data_get_double(settings, "cathode_boot_horiz_end") / 100.0f;
+	filter->fade_range.x = (float)obs_data_get_double(settings, "cathode_boot_fade_start") / 100.0f;
+	filter->fade_range.y = (float)obs_data_get_double(settings, "cathode_boot_fade_end") / 100.0f;
 }
 
-void cathode_boot_filter_defaults(obs_data_t *settings) {}
+void cathode_boot_filter_defaults(obs_data_t *settings) {
+	obs_data_set_default_double(settings, "cathode_boot_progress", 0.0);
+	obs_data_set_default_double(settings, "cathode_boot_vert_start", 0.0);
+	obs_data_set_default_double(settings, "cathode_boot_vert_end", 70.0);
+	obs_data_set_default_double(settings, "cathode_boot_horiz_start", 50.0);
+	obs_data_set_default_double(settings, "cathode_boot_horiz_end", 90.0);
+	obs_data_set_default_double(settings, "cathode_boot_fade_start", 90.0);
+	obs_data_set_default_double(settings, "cathode_boot_fade_end", 100.0);
+}
 
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
 				    obs_properties_t *props)
 {
 	obs_property_t *p = obs_properties_add_float_slider(
-		props, "cathode_booot_progress",
+		props, "cathode_boot_progress",
 		obs_module_text("RetroEffects.CathodeBoot.Progress"), 0.0,
 		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_vert_start",
+		obs_module_text("RetroEffects.CathodeBoot.VertStart"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_vert_end",
+		obs_module_text("RetroEffects.CathodeBoot.VertEnd"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_horiz_start",
+		obs_module_text("RetroEffects.CathodeBoot.HorizStart"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_horiz_end",
+		obs_module_text("RetroEffects.CathodeBoot.HorizEnd"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_fade_start",
+		obs_module_text("RetroEffects.CathodeBoot.FadeStart"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		props, "cathode_boot_fade_end",
+		obs_module_text("RetroEffects.CathodeBoot.FadeEnd"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
 
 	// cathode_boot Type
 }
@@ -88,6 +146,18 @@ void cathode_boot_filter_video_render(retro_effects_filter_data_t *data)
 	}
 	if (filter->param_progress) {
 		gs_effect_set_float(filter->param_progress, filter->progress);
+	}
+
+	if (filter->param_vert_range) {
+		gs_effect_set_vec2(filter->param_vert_range, &filter->vert_range);
+	}
+
+	if (filter->param_horiz_range) {
+		gs_effect_set_vec2(filter->param_horiz_range, &filter->horiz_range);
+	}
+
+	if (filter->param_fade_range) {
+		gs_effect_set_vec2(filter->param_fade_range, &filter->fade_range);
 	}
 
 	set_render_parameters();
@@ -168,6 +238,12 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "progress") == 0) {
 				filter->param_progress = param;
+			} else if (strcmp(info.name, "vert_range") == 0) {
+				filter->param_vert_range = param;
+			} else if (strcmp(info.name, "horiz_range") == 0) {
+				filter->param_horiz_range = param;
+			} else if (strcmp(info.name, "fade_range") == 0) {
+				filter->param_fade_range = param;
 			}
 		}
 	}

@@ -2,6 +2,9 @@ uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
 uniform float progress;
+uniform float2 vert_range;
+uniform float2 horiz_range;
+uniform float2 fade_range;
 
 sampler_state textureSampler{
     Filter = Linear;
@@ -27,14 +30,14 @@ VertData mainTransform(VertData v_in)
 float4 mainImage(VertData v_in) : TARGET
 {
 	float2 d = v_in.uv - float2(0.5, 0.5);
-	float2 progress_norm = float2(saturate((progress - 0.5) / 0.45), saturate(progress / 0.7));
-	float progress_fade = saturate((progress - 0.95) / 0.05);
+	float2 progress_norm = float2(saturate((progress - horiz_range.x) / (horiz_range.y - horiz_range.x)), saturate((progress - vert_range.x) / (vert_range.y - vert_range.x)));
+	float progress_fade = saturate((progress - fade_range.x) / (fade_range.y - fade_range.x));
 	d *= (1.0 + 100.0 * progress_norm);
 	float2 uv = float2(0.5, 0.5) + d;
 	float2 ap = step(abs(d), float2(0.5, 0.5)); // Thanks to twitch viewer
-	bool inside = ap.x * ap.y > 0.;           // FuleSnabel
+	bool inside = ap.x * ap.y > 0.;             // FuleSnabel
 	float4 color = image.Sample(textureSampler, uv);
-	color.rgb += progress;
+	color.rgb += max(progress_norm.x, progress_norm.y);
 	return inside ? color * (1.0 - progress_fade) + (progress_fade) * float4(0.0, 0.0, 0.0, 1.0) : float4(0.0, 0.0, 0.0, 1.0);
 }
 
