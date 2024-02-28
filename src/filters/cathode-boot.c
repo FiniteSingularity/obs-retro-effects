@@ -77,6 +77,7 @@ void cathode_boot_filter_defaults(obs_data_t *settings) {
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
 				    obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	obs_property_t *p = obs_properties_add_float_slider(
 		props, "cathode_boot_progress",
 		obs_module_text("RetroEffects.CathodeBoot.Progress"), 0.0,
