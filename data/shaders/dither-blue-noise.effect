@@ -168,6 +168,51 @@ float get_bayer(float2 px)
 }
 #endif
 
+float4 sampleSource(float2 uv)
+{
+#ifdef ROUND_UV_TO_PIXEL
+	float4 color = image.Sample(textureSampler, uvFromPx(pxFromUv(uv)));
+#else
+	float4 color = image.Sample(textureSampler, uv);
+#endif
+
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+
+	return color;
+}
+
+float4 sampleSourceMono(float2 uv)
+{
+	float4 color = sampleSource(uv);
+	return float4(RGBToLum(color.rgb).xxx, color.a);
+}
+
+float3 quantise(float3 color, float dither)
+{
+	return floor(color.rgb * color_steps + dither) / color_steps;
+}
+
+float4 ApplyBlueNoise(float4 color, float2 uv)
+{
+	float2 px = pxFromUv(uv);
+	float noise = RGBToLum(BlueNoise(px - offset));
+	color.rgb = quantise(color.rgb, noise);
+	return color;
+}
+
+float4 ApplyDitherNoise(float4 color, float2 uv)
+{
+	float2 px = pxFromUv(uv);
+	float noise = get_bayer(px);
+	color.rgb = quantise(color.rgb, noise);
+	return color;
+}
 
 VertData mainTransform(VertData v_in)
 {
@@ -177,101 +222,30 @@ VertData mainTransform(VertData v_in)
 
 float4 mainImageColorBN(VertData v_in) : TARGET
 {
-	float2 px = pxFromUv(v_in.uv);
+	float4 color = sampleSource(v_in.uv);
 
-	float2 coord = floor(v_in.uv * uv_size);
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
-
-	// Correct color
-#ifdef ROUND_UV_TO_PIXEL
-	float4 color = image.Sample(textureSampler, uvFromPx(px));
-#else
-	float4 color = image.Sample(textureSampler, v_in.uv);
-#endif
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-  
-	float noise = RGBToLum(BlueNoise(px - offset)) / color_steps;
-	float3 dithered = color.rgb + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, color.a);
+	return ApplyBlueNoise(color, v_in.uv);
 }
 
 float4 mainImageMonoBN(VertData v_in) : TARGET
 {
-	float2 px = pxFromUv(v_in.uv);
+	float4 color = sampleSourceMono(v_in.uv);
 
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
-
-	// Correct color
-#ifdef ROUND_UV_TO_PIXEL
-	float4 color = image.Sample(textureSampler, uvFromPx(px));
-#else
-	float4 color = image.Sample(textureSampler, v_in.uv);
-#endif
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-	
-	float noise = RGBToLum(BlueNoise(px - offset)) / color_steps;
-	
-	float lum = RGBToLum(color.rgb);
-
-	float dithered = lum + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, dithered, dithered, color.a);
+	return ApplyBlueNoise(color, v_in.uv);
 }
 
 float4 mainImageColorOrdered(VertData v_in) : TARGET
 {
-	float2 px = pxFromUv(v_in.uv);
+	float4 color = sampleSource(v_in.uv);
 
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
-
-	// Correct color
-#ifdef ROUND_UV_TO_PIXEL
-	float4 color = image.Sample(textureSampler, uvFromPx(px));
-#else
-	float4 color = image.Sample(textureSampler, v_in.uv);
-#endif
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-	
-	float noise = get_bayer(px) / color_steps;
-	float3 dithered = color.rgb + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, color.a);
+	return ApplyDitherNoise(color, v_in.uv);
 }
-
-
 
 float4 mainImageMonoOrdered(VertData v_in) : TARGET
 {
-	float2 px = pxFromUv(v_in.uv);
+	float4 color = sampleSourceMono(v_in.uv);
 
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
-
-	// Correct color
-#ifdef ROUND_UV_TO_PIXEL
-	float4 color = image.Sample(textureSampler, uvFromPx(px));
-#else
-	float4 color = image.Sample(textureSampler, v_in.uv);
-#endif
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-  
-	float noise = get_bayer(px) / color_steps;
-	float lum = RGBToLum(color.rgb);
-	float dithered = lum + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, dithered, dithered, color.a);
+	return ApplyDitherNoise(color, v_in.uv);
 }
 
 technique DrawColorBN
