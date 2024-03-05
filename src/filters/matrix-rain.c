@@ -22,9 +22,19 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 		gs_effect_destroy(data->effect_matrix_rain);
 	}
 
+	if (data->font_image) {
+		gs_image_file_free(data->font_image);
+		bfree(data->font_image);
+	}
+
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "matrix_rain_scale");
+	obs_data_unset_user_value(settings, "matrix_rain_noise_shift");
+	obs_data_unset_user_value(settings, "matrix_rain_colorize");
+	obs_data_unset_user_value(settings, "matrix_rain_text_color");
+	obs_data_unset_user_value(settings, "matrix_rain_background_color");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
