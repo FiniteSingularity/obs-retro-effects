@@ -41,16 +41,21 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 		matrix_rain_load_effect(filter);
 	}
 
-	filter->scale = (float)obs_data_get_double(settings, "matrix_rain_scale");
-	filter->noise_shift = (float)obs_data_get_double(settings, "matrix_rain_noise_shift");
+	filter->scale =
+		(float)obs_data_get_double(settings, "matrix_rain_scale");
+	filter->noise_shift =
+		(float)obs_data_get_double(settings, "matrix_rain_noise_shift");
 	filter->colorize = obs_data_get_bool(settings, "matrix_rain_colorize");
 	vec4_from_rgba(&filter->text_color,
-		       (uint32_t)obs_data_get_int(settings, "matrix_rain_text_color"));
+		       (uint32_t)obs_data_get_int(settings,
+						  "matrix_rain_text_color"));
 	vec4_from_rgba(&filter->background_color,
-		       (uint32_t)obs_data_get_int(settings, "matrix_rain_background_color"));
+		       (uint32_t)obs_data_get_int(
+			       settings, "matrix_rain_background_color"));
 
 	struct dstr font_image_path = {0};
-	dstr_cat(&font_image_path, obs_get_module_data_path(obs_current_module()));
+	dstr_cat(&font_image_path,
+		 obs_get_module_data_path(obs_current_module()));
 	dstr_cat(&font_image_path, "/images/ascii-font-2-200x30x10chars.png");
 
 	// Todo- compare if there was a change in mask_image_path
@@ -64,7 +69,8 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 			obs_leave_graphics();
 		}
 		if (font_image_path.len > 0 && font_image_path.array) {
-			gs_image_file_init(filter->font_image, font_image_path.array);
+			gs_image_file_init(filter->font_image,
+					   font_image_path.array);
 			obs_enter_graphics();
 			gs_image_file_init_texture(filter->font_image);
 			obs_leave_graphics();
@@ -75,22 +81,26 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 	filter->font_texture_size.y = 30.0f;
 	filter->font_num_chars = 10.0f;
 	dstr_free(&font_image_path);
-
 }
 
-void matrix_rain_filter_defaults(obs_data_t *settings) {}
+void matrix_rain_filter_defaults(obs_data_t *settings)
+{
+	UNUSED_PARAMETER(settings);
+}
 
 void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 				   obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	obs_properties_add_float_slider(
 		props, "matrix_rain_scale",
-		obs_module_text("RetroEffects.MatrixRain.Scale"), 0.1, 20.0, 0.1);
+		obs_module_text("RetroEffects.MatrixRain.Scale"), 0.1, 20.0,
+		0.1);
 
 	obs_properties_add_float_slider(
 		props, "matrix_rain_noise_shift",
-		obs_module_text("RetroEffects.MatrixRain.NoiseShift"), -4000.0, 4000.0,
-		0.1);
+		obs_module_text("RetroEffects.MatrixRain.NoiseShift"), -4000.0,
+		4000.0, 0.1);
 
 	obs_properties_add_bool(
 		props, "matrix_rain_colorize",
@@ -105,12 +115,12 @@ void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.MatrixRain.BackgroundColor"));
 }
 
-void matrix_rain_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
+void matrix_rain_filter_video_tick(retro_effects_filter_data_t *data,
+				   float seconds)
 {
 	matrix_rain_filter_data_t *filter = data->active_filter_data;
 	filter->local_time += seconds;
 }
-
 
 void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 {
@@ -162,8 +172,7 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 				    filter->font_num_chars);
 	}
 	if (filter->param_scale) {
-		gs_effect_set_float(filter->param_scale,
-				    filter->scale);
+		gs_effect_set_float(filter->param_scale, filter->scale);
 	}
 	if (filter->param_noise_shift) {
 		gs_effect_set_float(filter->param_noise_shift,
@@ -174,13 +183,11 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 				    filter->local_time);
 	}
 	if (filter->param_colorize) {
-		gs_effect_set_bool(filter->param_colorize,
-				    filter->colorize);
+		gs_effect_set_bool(filter->param_colorize, filter->colorize);
 	}
 	if (filter->param_text_color) {
 		gs_effect_set_vec4(filter->param_text_color,
 				   &filter->text_color);
-
 	}
 	if (filter->param_background_color) {
 		gs_effect_set_vec4(filter->param_background_color,
@@ -264,9 +271,11 @@ static void matrix_rain_load_effect(matrix_rain_filter_data_t *filter)
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "font_image") == 0) {
 				filter->param_font_image = param;
-			} else if (strcmp(info.name, "font_texture_size") == 0) {
+			} else if (strcmp(info.name, "font_texture_size") ==
+				   0) {
 				filter->param_font_texture_size = param;
-			} else if (strcmp(info.name, "font_texture_num_chars") == 0) {
+			} else if (strcmp(info.name,
+					  "font_texture_num_chars") == 0) {
 				filter->param_font_texture_num_chars = param;
 			} else if (strcmp(info.name, "scale") == 0) {
 				filter->param_scale = param;
@@ -281,7 +290,6 @@ static void matrix_rain_load_effect(matrix_rain_filter_data_t *filter)
 			} else if (strcmp(info.name, "background_color") == 0) {
 				filter->param_background_color = param;
 			}
-
 		}
 	}
 	filter->loading_effect = false;
