@@ -138,3 +138,37 @@ float hash11(float src)
 {
 	return float(pcg(uint(src)) * 1.0 / float(0xffffffffu));
 }
+
+/* murmur hash to generate random unsigned integers */
+uint murmurHash(uint2 x, uint seed)
+{
+	const uint m = 0x5bd1e995U;
+	uint hash = seed;
+  // process first vector element
+	uint k = x.x;
+	k *= m;
+	k ^= k >> 24;
+	k *= m;
+	hash *= m;
+	hash ^= k;
+  // process second vector element
+	k = x.y;
+	k *= m;
+	k ^= k >> 24;
+	k *= m;
+	hash *= m;
+	hash ^= k;
+	// some final mixing
+	hash ^= hash >> 13;
+	hash *= m;
+	hash ^= hash >> 15;
+	return hash;
+}
+
+float2 whiteNoise2D(float2 pos, uint seed)
+{
+	return float2(
+    float(murmurHash(uint2(uint(pos.x), uint(pos.y)), seed)) / float(0xffffffffU),
+    float(murmurHash(uint2(uint(pos.x + 10000), uint(pos.y + 10000)), seed)) / float(0xffffffffU)
+  );
+}

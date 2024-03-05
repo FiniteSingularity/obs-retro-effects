@@ -1,0 +1,93 @@
+#include "noise-functions.effect"
+
+#define EPS 1.e-6
+uniform float4x4 ViewProj;               // No input
+uniform texture2d image;                 // No input
+uniform texture2d font_image;            // Dropdown
+uniform float2 uv_size;                  // No input
+uniform float2 font_texture_size;        // Calculated from dd
+uniform float font_texture_num_chars;    // Calculated from dd
+uniform float scale;                     // INPUT
+uniform float noise_shift;               // INPUT
+uniform float local_time;                // Comes from time/calcuated
+uniform bool colorize;                   // INPUT
+uniform float4 text_color;               // INPUT
+uniform float4 background_color;         // INPUT
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+float gray(float3 col)
+{
+	// Standard RGB to luminance calculation
+	return col.r * 0.299 + col.g * 0.587 + col.b * 0.114;
+}
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float char_height = font_texture_size.y;
+	float char_width = font_texture_size.x / font_texture_num_chars;
+
+	float2 coord = v_in.uv * uv_size;
+	float2 uv = float2(floor(coord.x / char_width / scale) * char_width * scale, floor(coord.y / char_height / scale) * char_height * scale) / uv_size.xy;
+
+	float noise_shift_u = floor(noise_shift / char_width / scale) * char_width * scale / uv_size.x;
+	float2 sub_pos = float2(frac(coord.x / scale / char_width), frac(coord.y / scale / char_height));
+
+	float2 noise = whiteNoise2D((uv - float2(noise_shift_u, 0.0)) * float2(uv_size.x, 1), 12345);
+	//float2 noise = hash32(float3(uv - float2(noise_shift_u, 0.0) * float2(uv_size.x, 1), 0.0));
+	
+	float rain_speed = 1.0 + noise.x * 7.0;
+	float rain_phase = noise.y;
+
+	float t = local_time;
+	float rainY = frac(t / rain_speed);
+
+	float rain = abs(uv.y - rainY) < 0.02 ? 1.0 : 0.0;
+	float rain_scale = 1.0;
+	if (uv.y > rainY)
+	{
+		rain_scale = 0.73;
+	}
+
+	float4 col = image.Sample(textureSampler, uv);
+	if (col.a < EPS)
+	{
+		return float4(0.0, 0.0, 0.0, 0.0);
+	}
+
+	float g = min(gray(col.rgb), 0.99);
+	float char_uv = floor(g * float(font_texture_num_chars)) / float(font_texture_num_chars);
+
+	float2 sampleUv = float2(char_uv, 0.0) + float2(1.0 / float(font_texture_num_chars), 1.0) * sub_pos;
+
+	float4 cha = font_image.Sample(textureSampler, sampleUv);
+	cha = float4(1.0 - cha.r, 1.0 - cha.g, 1.0 - cha.b, 1.0 - gray(cha.rgb));
+	float4 pixel = colorize ? float4(col.rgb / max(col.r, max(col.g, col.b)), col.a) : text_color;
+	return cha * (float4(rain_scale, rain_scale, rain_scale, 1.0) * pixel + rain) + (1.0 - cha) * background_color;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
+
