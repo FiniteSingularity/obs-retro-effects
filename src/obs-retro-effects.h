@@ -23,6 +23,8 @@
 #define RETRO_FILTER_NTSC_LABEL "RetroEffects.NTSC"
 #define RETRO_FILTER_CATHODE_BOOT 8
 #define RETRO_FILTER_CATHODE_BOOT_LABEL "RetroEffects.CathodeBoot"
+#define RETRO_FILTER_MATRIX_RAIN 9
+#define RETRO_FILTER_MATRIX_RAIN_LABEL "RetroEffects.MatrixRain"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;

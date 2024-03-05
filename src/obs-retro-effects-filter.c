@@ -8,6 +8,7 @@
 #include "filters/crt.h"
 #include "filters/ntsc.h"
 #include "filters/cathode-boot.h"
+#include "filters/matrix-rain.h"
 #include "blur/blur.h"
 
 struct obs_source_info obs_retro_effects_filter = {
@@ -173,6 +174,9 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 	obs_property_list_add_int(filter_list,
 				  obs_module_text(RETRO_FILTER_CATHODE_BOOT_LABEL),
 		                  RETRO_FILTER_CATHODE_BOOT);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_MATRIX_RAIN_LABEL),
+				  RETRO_FILTER_MATRIX_RAIN);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -230,6 +234,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 		break;
 	case RETRO_FILTER_CATHODE_BOOT:
 		cathode_boot_create(filter);
+		break;
+	case RETRO_FILTER_MATRIX_RAIN:
+		matrix_rain_create(filter);
 		break;
 	}
 }
