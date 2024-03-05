@@ -1,3 +1,4 @@
+
 uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
@@ -27,25 +28,23 @@ float3 mask_weights(float2 coord)
 	float awy = floor(fmod(coord.y, 2.0));
 	float3 aperture_weights = lerp(magenta, green, float3(awx, awx, awx));
    
-	if (phosphor_layout == 0)
+#ifdef PHOSPHOR_LAYOUT_0
 		return weights;
-	else if (phosphor_layout == 1)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_1
 		// classic aperture for RGB panels; good for 1080p, too small for 4K+
 		// aka aperture_1_2_bgr
 		weights = aperture_weights;
 		return weights;
-	}
-	else if (phosphor_layout == 2)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_2
 		// 2x2 shadow mask for RGB panels; good for 1080p, too small for 4K+
 		// aka delta_1_2x1_bgr
 		float3 inverse_aperture = lerp(green, magenta, awx);
 		weights = lerp(aperture_weights, inverse_aperture, awy);
 		return weights;
-	}
-	else if (phosphor_layout == 3)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_3
       // slot mask for RGB panels; looks okay at 1080p, looks better at 4K
 		float3 slotmask[3][4] =
 		{
@@ -63,22 +62,19 @@ float3 mask_weights(float2 coord)
       // use the indexes to find which color to apply to the current pixel
 		weights = slotmask[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 4)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_4
       // classic aperture for RBG panels; good for 1080p, too small for 4K+
 		weights = lerp(yellow, blue, awx);
 		return weights;
-	}
-	else if (phosphor_layout == 5)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_5
       // 2x2 shadow mask for RBG panels; good for 1080p, too small for 4K+
 		float3 inverse_aperture = lerp(blue, yellow, awx);
 		weights = lerp(lerp(yellow, blue, awx), inverse_aperture, awy);
 		return weights;
-	}
-	else if (phosphor_layout == 6)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_6
       // aperture_1_4_rgb; good for simulating lower 
 		float3 ap4[4] = { red, green, blue, black };
       
@@ -86,9 +82,8 @@ float3 mask_weights(float2 coord)
       
 		weights = ap4[z];
 		return weights;
-	}
-	else if (phosphor_layout == 7)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_7
       // aperture_2_5_bgr
 		float3 ap3[5] = { red, magenta, blue, green, green };
       
@@ -96,9 +91,8 @@ float3 mask_weights(float2 coord)
       
 		weights = ap3[z];
 		return weights;
-	}
-	else if (phosphor_layout == 8)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_8
       // aperture_3_6_rgb
       
 		float3 big_ap[7] = { red, red, yellow, green, cyan, blue, blue };
@@ -107,9 +101,8 @@ float3 mask_weights(float2 coord)
       
 		weights = big_ap[w];
 		return weights;
-	}
-	else if (phosphor_layout == 9)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_9
       // reduced TVL aperture for RGB panels
       // aperture_2_4_rgb
       
@@ -119,9 +112,8 @@ float3 mask_weights(float2 coord)
       
 		weights = big_ap_rgb[w];
 		return weights;
-	}
-	else if (phosphor_layout == 10)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_10
       // reduced TVL aperture for RBG panels
       
 		float3 big_ap_rbg[4] = { red, magenta, cyan, green };
@@ -130,9 +122,8 @@ float3 mask_weights(float2 coord)
       
 		weights = big_ap_rbg[w];
 		return weights;
-	}
-	else if (phosphor_layout == 11)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_11
       // delta_1_4x1_rgb; dunno why this is called 4x1 when it's obviously 4x2 /shrug
 		float3 delta1[2][4] =
 		{
@@ -145,9 +136,8 @@ float3 mask_weights(float2 coord)
       
 		weights = delta1[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 12)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_12
       // delta_2_4x1_rgb
 		float3 delta[2][4] =
 		{
@@ -160,9 +150,8 @@ float3 mask_weights(float2 coord)
       
 		weights = delta[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 13)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_13
       // delta_2_4x2_rgb
 		float3 delta[4][4] =
 		{
@@ -177,9 +166,8 @@ float3 mask_weights(float2 coord)
       
 		weights = delta[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 14)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_14
       // slot mask for RGB panels; too low-pitch for 1080p, looks okay at 4K, but wants 8K+
 		float3 slotmask[3][6] =
 		{
@@ -194,9 +182,8 @@ float3 mask_weights(float2 coord)
 
 		weights = slotmask[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 15)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_15
       // slot_2_4x4_rgb
 		float3 slot2[4][8] =
 		{
@@ -211,9 +198,8 @@ float3 mask_weights(float2 coord)
       
 		weights = slot2[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 16)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_16
       // slot mask for RBG panels; too low-pitch for 1080p, looks okay at 4K, but wants 8K+
 		float3 slotmask[3][4] =
 		{
@@ -228,9 +214,8 @@ float3 mask_weights(float2 coord)
 
 		weights = slotmask[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 17)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_17
       // slot_2_5x4_bgr
 		float3 slot2[4][10] =
 		{
@@ -245,9 +230,8 @@ float3 mask_weights(float2 coord)
       
 		weights = slot2[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 18)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_18
       // same as above but for RBG panels
 		float3 slot2[4][10] =
 		{
@@ -262,9 +246,8 @@ float3 mask_weights(float2 coord)
       
 		weights = slot2[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 19)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_19
       // slot_3_7x6_rgb
 		float3 slot[6][14] =
 		{
@@ -281,9 +264,8 @@ float3 mask_weights(float2 coord)
       
 		weights = slot[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 20)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_20
       // TATE slot mask for RGB layouts; this is not realistic obviously, but it looks nice and avoids chromatic aberration
 		float3 tatemask[4][4] =
 		{
@@ -299,9 +281,8 @@ float3 mask_weights(float2 coord)
 
 		weights = tatemask[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 21)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_21
       // based on MajorPainInTheCactus' HDR slot mask
 		float3 slot[4][8] =
 		{
@@ -316,9 +297,8 @@ float3 mask_weights(float2 coord)
       
 		weights = slot[w][z];
 		return weights;
-	}
-	else if (phosphor_layout == 22)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_22
       // black and white aperture; good for weird subpixel layouts and low brightness; good for 1080p and lower
 		float3 bw3[3] = { black, white, white };
       
@@ -326,9 +306,8 @@ float3 mask_weights(float2 coord)
       
 		weights = bw3[z];
 		return weights;
-	}
-	else if (phosphor_layout == 23)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_23
       // black and white aperture; good for weird subpixel layouts and low brightness; good for 4k 
 		float3 bw4[4] = { black, black, white, white };
       
@@ -336,9 +315,8 @@ float3 mask_weights(float2 coord)
       
 		weights = bw4[z];
 		return weights;
-	}
-	else if (phosphor_layout == 24)
-	{
+#endif
+#ifdef PHOSPHOR_LAYOUT_24
       // shadowmask courtesy of Louis. Suitable for lower TVL on high-res 4K+ screens
 		float3 shadow[6][10] =
 		{
@@ -355,10 +333,9 @@ float3 mask_weights(float2 coord)
       
 		weights = shadow[w][z];
 		return weights;
-	}
-	return weights;
+#endif
+//	return weights;
 }
-
 
 sampler_state textureSampler{
     Filter = Linear;

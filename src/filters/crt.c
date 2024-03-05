@@ -50,6 +50,13 @@ void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 {
 	crt_filter_data_t *filter = data->active_filter_data;
 
+	int phosphor_type = (int)obs_data_get_int(settings, "crt_phosphor_type");
+
+	if (filter->phosphor_type != phosphor_type) {
+		filter->phosphor_type = phosphor_type;
+		filter->reload_effect = true;
+	}
+
 	if (filter->reload_effect) {
 		filter->reload_effect = false;
 		crt_load_effect(filter);
@@ -69,9 +76,7 @@ void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 
 	filter->mask_intensity =
 		(float)obs_data_get_double(settings, "crt_mask_intensity") /
-		100.0f;
-	filter->phosphor_type =
-		(int)obs_data_get_int(settings, "crt_phosphor_type");
+		100.0f;	
 
 	filter->black_level =
 		(float)obs_data_get_double(settings, "crt_black_level") /
@@ -232,11 +237,6 @@ static void crt_filter_render_crt_mask(retro_effects_filter_data_t* data)
 				    filter->mask_intensity);
 	}
 
-	if (filter->param_phosphor_type) {
-		gs_effect_set_int(filter->param_phosphor_type,
-				  filter->phosphor_type);
-	}
-
 	if (filter->param_vignette_intensity) {
 		gs_effect_set_float(filter->param_vignette_intensity,
 				    filter->vignette_intensity);
@@ -365,7 +365,9 @@ static void crt_load_effect(crt_filter_data_t *filter)
 	dstr_free(&filename);
 
 	struct dstr shader_dstr = {0};
-	dstr_init_copy(&shader_dstr, shader_text);
+	dstr_init(&shader_dstr);
+	dstr_printf(&shader_dstr, "#define PHOSPHOR_LAYOUT_%i\n", filter->phosphor_type);
+	dstr_cat(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
 	filter->effect_crt = gs_effect_create(shader_dstr.array, NULL, &errors);
@@ -394,8 +396,6 @@ static void crt_load_effect(crt_filter_data_t *filter)
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "mask_intensity") == 0) {
 				filter->param_mask_intensity = param;
-			} else if (strcmp(info.name, "phosphor_layout") == 0) {
-				filter->param_phosphor_type = param;
 			} else if (strcmp(info.name, "vignette_intensity") == 0) {
 				filter->param_vignette_intensity = param;
 			} else if (strcmp(info.name, "corner_radius") == 0) {
