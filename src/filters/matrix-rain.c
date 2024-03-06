@@ -66,7 +66,7 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 	struct dstr font_image_path = {0};
 	dstr_cat(&font_image_path,
 		 obs_get_module_data_path(obs_current_module()));
-	dstr_cat(&font_image_path, "/images/ascii-font-2-200x30x10chars.png");
+	dstr_cat(&font_image_path, "/images/matrix-font-1-14-bloom.png");
 
 	// Todo- compare if there was a change in mask_image_path
 	if (1 != 0) {
@@ -83,13 +83,13 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 					   font_image_path.array);
 			obs_enter_graphics();
 			gs_image_file_init_texture(filter->font_image);
+			filter->font_texture_size.x = (float)gs_texture_get_width(filter->font_image->texture);
+			filter->font_texture_size.y = (float)gs_texture_get_height(filter->font_image->texture);
 			obs_leave_graphics();
+
 		}
 	}
-
-	filter->font_texture_size.x = 200.0f;
-	filter->font_texture_size.y = 30.0f;
-	filter->font_num_chars = 10.0f;
+	filter->font_num_chars = 14.0f;
 	dstr_free(&font_image_path);
 }
 
