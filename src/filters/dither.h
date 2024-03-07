@@ -28,6 +28,7 @@ struct dither_filter_data {
 	struct vec2 offset;
 	int color_steps;
 	bool monochromatic;
+	bool round_to_pixel;
 	bool loading_effect;
 	bool reload_effect;
 };
@@ -45,4 +46,6 @@ static void dither_load_effect(dither_filter_data_t *filter);
 static bool dither_type_modified(obs_properties_t *props, obs_property_t *p,
 				 obs_data_t *settings);
 static bool dither_bayer_size_modified(void *data, obs_properties_t *props,
+				       obs_property_t *p, obs_data_t *settings);
+static bool dither_round_to_pixel_modified(void *data, obs_properties_t *props,
 				       obs_property_t *p, obs_data_t *settings);

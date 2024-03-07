@@ -29,6 +29,7 @@ void dither_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "dither_bayer_size");
 	obs_data_unset_user_value(settings, "dither_color_steps");
 	obs_data_unset_user_value(settings, "dither_mono");
+	obs_data_unset_user_value(settings, "dither_round");
 	obs_data_unset_user_value(settings, "dither_contrast");
 	obs_data_unset_user_value(settings, "dither_gamma");
 	obs_data_unset_user_value(settings, "dither_offset_x");
@@ -48,6 +49,7 @@ void dither_filter_update(retro_effects_filter_data_t *data,
 	filter->bayer_size = (uint32_t)obs_data_get_int(settings, "dither_bayer_size");
 	filter->color_steps = (uint32_t)obs_data_get_int(settings, "dither_color_steps");
 	filter->monochromatic = obs_data_get_bool(settings, "dither_mono");
+	filter->round_to_pixel = obs_data_get_bool(settings, "dither_round");
 	filter->contrast = (float)obs_data_get_double(settings, "dither_contrast") * 255.0f;
 	filter->gamma = (float)obs_data_get_double(settings, "dither_gamma");
 	filter->offset.x = (float)obs_data_get_double(settings, "dither_offset_x");
@@ -64,6 +66,7 @@ void dither_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "dither_type", DITHER_TYPE_ORDERED);
 	obs_data_set_default_int(settings, "dither_bayer_size", 4);
 	obs_data_set_default_bool(settings, "dither_mono", false);
+	obs_data_set_default_bool(settings, "dither_round", true);
 	obs_data_set_default_double(settings, "dither_size", 1.0);
 	obs_data_set_default_double(settings, "dither_contrast", 0.0);
 	obs_data_set_default_double(settings, "dither_gamma", 1.0);
@@ -115,6 +118,12 @@ void dither_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.Dither.ColorSteps"), 1, 32, 1);
 
 	obs_properties_add_bool(props, "dither_mono", obs_module_text("RetroEffects.Dither.Monochromatic"));
+
+	obs_property_t * dither_round = obs_properties_add_bool(
+		props, "dither_round",
+		obs_module_text("RetroEffects.Dither.RoundToPixel"));
+	obs_property_set_modified_callback2(dither_round,
+					   dither_round_to_pixel_modified, data->active_filter_data);
 
 	// Contrast
 	obs_properties_add_float_slider(
@@ -243,6 +252,11 @@ static void dither_load_effect(dither_filter_data_t *filter)
 	dstr_init_copy(&shader_dstr, "#define USE_BAYER");
 	int bayer_size = filter->bayer_size > 0 ? filter->bayer_size : 4;
 	dstr_catf(&shader_dstr, "%i\n", bayer_size);
+
+	if (filter->round_to_pixel) {
+		dstr_cat(&shader_dstr, "#define ROUND_UV_TO_PIXEL\n");
+	}
+
 	dstr_cat(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
@@ -289,6 +303,17 @@ static void dither_load_effect(dither_filter_data_t *filter)
 }
 
 static bool dither_bayer_size_modified(void* data, obs_properties_t *props,
+				       obs_property_t *p, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(p);
+	UNUSED_PARAMETER(props);
+	UNUSED_PARAMETER(settings);
+	dither_filter_data_t *filter = data;
+	filter->reload_effect = true;
+	return false;
+}
+
+static bool dither_round_to_pixel_modified(void* data, obs_properties_t *props,
 				       obs_property_t *p, obs_data_t *settings)
 {
 	UNUSED_PARAMETER(p);

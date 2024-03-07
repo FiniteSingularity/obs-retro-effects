@@ -91,17 +91,51 @@ float RGBToLum(float3 color)
 	return 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
 }
 
+// UV: proportion across source texture, 0 to 1
+// tx: source texels, 0 to uv_size-1
+// px: output-scaled pixels
+
+float2 txFromUv(float2 uv)
+{
+	return floor(uv * uv_size.xy);
+}
+
+float2 uvFromTx(float2 tx)
+{
+	return (tx + 0.5) / uv_size.xy;
+}
+
+float2 pxFromTx(float2 tx)
+{
+	return floor(tx / dither_size);
+}
+
+float2 txFromPx(float2 px)
+{
+	return floor((px + 0.5f) * dither_size);
+}
+
+float2 uvFromPx(float2 px)
+{
+	return uvFromTx(txFromPx(px));
+}
+
+float2 pxFromUv(float2 uv)
+{
+	return pxFromTx(txFromUv(uv));
+}
+
 #ifdef USE_BAYER2
-float get_bayer(float2 coord)
+float get_bayer(float2 px)
 {
 	int bayer2[4] = { 0, 2, 3, 1 };
-	float2 sample_coord = mod((coord / dither_size), float2(2.0, 2.0));
+	float2 sample_coord = mod(px, float2(2.0, 2.0));
 	return float(bayer2[int(sample_coord.y) * 2 + int(sample_coord.x)]) / 4.0;
 }
 #endif
 
 #ifdef USE_BAYER4
-float get_bayer(float2 coord)
+float get_bayer(float2 px)
 {
 	int bayer4[16] =
 	{
@@ -110,13 +144,13 @@ float get_bayer(float2 coord)
 		3, 11, 1, 9,
 		15, 7, 13, 5
 	};
-	float2 sample_coord = mod((coord / dither_size), float2(4.0, 4.0));
+	float2 sample_coord = mod(px, float2(4.0, 4.0));
 	return float(bayer4[int(sample_coord.y) * 4 + int(sample_coord.x)]) / 16.0;
 }
 #endif
 
 #ifdef USE_BAYER8
-float get_bayer(float2 coord)
+float get_bayer(float2 px)
 {
 	int bayer8[64] =
 	{
@@ -129,10 +163,56 @@ float get_bayer(float2 coord)
 		15, 47, 7, 39, 13, 45, 5, 37,
 		63, 31, 55, 23, 61, 29, 53, 21
 	};
-	float2 sample_coord = mod((coord / dither_size), float2(8.0, 8.0));
+	float2 sample_coord = mod(px, float2(8.0, 8.0));
 	return (float(bayer8[int(sample_coord.y) * 8 + int(sample_coord.x)]) / 64.0);
 }
 #endif
+
+float4 sampleSource(float2 uv)
+{
+#ifdef ROUND_UV_TO_PIXEL
+	float4 color = image.Sample(textureSampler, uvFromPx(pxFromUv(uv)));
+#else
+	float4 color = image.Sample(textureSampler, uv);
+#endif
+
+	// Calcuate color correction factors
+	float gammaCorrection = 1.0 / gamma;
+	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	// Correct color
+	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
+
+	return color;
+}
+
+float4 sampleSourceMono(float2 uv)
+{
+	float4 color = sampleSource(uv);
+	return float4(RGBToLum(color.rgb).xxx, color.a);
+}
+
+float3 quantise(float3 color, float dither)
+{
+	return floor(color.rgb * color_steps + dither) / color_steps;
+}
+
+float4 ApplyBlueNoise(float4 color, float2 uv)
+{
+	float2 px = pxFromUv(uv);
+	float noise = RGBToLum(BlueNoise(px - offset));
+	color.rgb = quantise(color.rgb, noise);
+	return color;
+}
+
+float4 ApplyDitherNoise(float4 color, float2 uv)
+{
+	float2 px = pxFromUv(uv);
+	float noise = get_bayer(px);
+	color.rgb = quantise(color.rgb, noise);
+	return color;
+}
 
 VertData mainTransform(VertData v_in)
 {
@@ -142,80 +222,30 @@ VertData mainTransform(VertData v_in)
 
 float4 mainImageColorBN(VertData v_in) : TARGET
 {
-	float2 coord = v_in.uv * uv_size;
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+	float4 color = sampleSource(v_in.uv);
 
-	// Correct color  
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-  
-	float noise = RGBToLum(BlueNoise((coord - offset) / dither_size)) / color_steps;
-	float3 dithered = color.rgb + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, color.a);
+	return ApplyBlueNoise(color, v_in.uv);
 }
 
 float4 mainImageMonoBN(VertData v_in) : TARGET
 {
-	float2 coord = v_in.uv * uv_size;
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+	float4 color = sampleSourceMono(v_in.uv);
 
-	// Correct color  
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-	
-	float noise = RGBToLum(BlueNoise((coord - offset) / dither_size))/color_steps;
-	
-	float lum = RGBToLum(color.rgb);
-
-	float dithered = lum + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, dithered, dithered, color.a);
+	return ApplyBlueNoise(color, v_in.uv);
 }
 
 float4 mainImageColorOrdered(VertData v_in) : TARGET
-{	
-	float2 coord = v_in.uv * uv_size;
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+{
+	float4 color = sampleSource(v_in.uv);
 
-	// Correct color  
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-	
-	float noise = get_bayer(coord) / color_steps;
-	float3 dithered = color.rgb + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, color.a);
+	return ApplyDitherNoise(color, v_in.uv);
 }
-
-
 
 float4 mainImageMonoOrdered(VertData v_in) : TARGET
 {
-	float2 coord = v_in.uv * uv_size;
-	// Calcuate color correction factors
-	float gammaCorrection = 1.0 / gamma;
-	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+	float4 color = sampleSourceMono(v_in.uv);
 
-	// Correct color  
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	color.rgb = pow(color.rgb, gammaCorrection);
-	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
-  
-	float noise = get_bayer(coord) / color_steps;
-	float lum = RGBToLum(color.rgb);
-	float dithered = lum + noise;
-	dithered = floor(dithered * color_steps) / color_steps;
-	return float4(dithered, dithered, dithered, color.a);
+	return ApplyDitherNoise(color, v_in.uv);
 }
 
 technique DrawColorBN
