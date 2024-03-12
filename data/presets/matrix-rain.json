@@ -1,0 +1,25 @@
+{
+	"settings_version": "0.0.1",
+	"textures": [
+		{
+			"name": "Matrix Rain",
+			"file": "/images/matrix-font-56.png",
+			"chars": 56
+		},
+		{
+			"name": "ASCII 70 Chars",
+			"file": "/images/ascii-font-1-1260x36x70chars.png",
+			"chars": 70
+		},
+		{
+			"name": "ASCII 10 Chars",
+			"file": "/images/ascii-font-2-200x30x10chars.png",
+			"chars": 10
+		},
+		{
+			"name": "Emojis",
+			"file": "/images/emojis-52.png",
+			"chars":  52
+		}
+	]
+}

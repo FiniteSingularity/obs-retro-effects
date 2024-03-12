@@ -10,6 +10,7 @@
 #include "filters/cathode-boot.h"
 #include "filters/matrix-rain.h"
 #include "blur/blur.h"
+#include "blur/bloom.h"
 
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
@@ -54,6 +55,7 @@ static void *retro_effects_filter_create(obs_data_t *settings,
 	filter->initial_load = true;
 
 	blur_create(filter);
+	bloom_create(filter);
 
 	load_output_effect(filter);
 	obs_source_update(source, settings);

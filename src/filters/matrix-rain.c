@@ -1,5 +1,6 @@
 #include "matrix-rain.h"
 #include "../obs-utils.h"
+#include "../blur/blur.h"
 
 void matrix_rain_create(retro_effects_filter_data_t *filter)
 {
@@ -8,6 +9,12 @@ void matrix_rain_create(retro_effects_filter_data_t *filter)
 	filter->active_filter_data = data;
 	data->reload_effect = false;
 	matrix_rain_set_functions(filter);
+	struct dstr filepath = {0};
+	dstr_cat(&filepath, obs_get_module_data_path(obs_current_module()));
+	dstr_cat(&filepath, "/presets/matrix-rain.json");
+	data->textures_data = obs_data_create_from_json_file(filepath.array);
+	dstr_free(&filepath);
+
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	matrix_rain_filter_defaults(settings);
 	obs_data_release(settings);
@@ -25,6 +32,10 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 	if (data->font_image) {
 		gs_image_file_free(data->font_image);
 		bfree(data->font_image);
+	}
+
+	if (data->textures_data) {
+		obs_data_release(data->textures_data);
 	}
 
 	obs_leave_graphics();
@@ -63,14 +74,54 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 		       (uint32_t)obs_data_get_int(
 			       settings, "matrix_rain_background_color"));
 
-	struct dstr font_image_path = {0};
-	dstr_cat(&font_image_path,
-		 obs_get_module_data_path(obs_current_module()));
-	dstr_cat(&font_image_path, "/images/matrix-font-1-14-bloom.png");
+	filter->min_brightness =
+		(float)obs_data_get_double(settings, "matrix_min_brightness");
 
-	// Todo- compare if there was a change in mask_image_path
-	if (1 != 0) {
-		//strcpy(data->mask_image_path, mask_image_file);
+	filter->max_brightness =
+		(float)obs_data_get_double(settings, "matrix_max_brightness");
+
+	filter->min_fade_value =
+		(float)obs_data_get_double(settings, "matrix_min_fade_value");
+
+	filter->active_rain_brightness = (float)obs_data_get_double(
+		settings, "matrix_active_rain_brightness");
+
+	filter->fade_distance = fmaxf((float)obs_data_get_double(
+		settings, "matrix_fade_distance"), 0.001f);
+
+	filter->speed_factor = (float)obs_data_get_double(
+		settings, "matrix_speed_factor");
+
+	data->bloom_data->bloom_intensity = (float)obs_data_get_double(
+		settings, "matrix_bloom_intensity");
+
+	const float bloom_radius = (float)obs_data_get_double(settings, "matrix_bloom_radius");
+	set_gaussian_radius(bloom_radius, data->blur_data);
+
+	data->bloom_data->brightness_threshold =
+		(float)obs_data_get_double(
+		settings, "matrix_bloom_threshold");
+
+	if (filter->char_set != (uint32_t)obs_data_get_int(settings, "matrix_char_set")) {
+		filter->char_set = (uint32_t)obs_data_get_int(settings, "matrix_char_set");
+
+		if (filter->char_set == 0) {
+			return;
+		}
+
+		obs_data_array_t *data_array = obs_data_get_array(
+			filter->textures_data, "textures");
+
+		obs_data_t *texture_dat = obs_data_array_item(data_array, filter->char_set - 1);
+
+		const char *filename = obs_data_get_string(texture_dat, "file");
+		float num_chars = (float)obs_data_get_int(texture_dat, "chars");
+
+		struct dstr font_image_path = {0};
+		dstr_cat(&font_image_path,
+			 obs_get_module_data_path(obs_current_module()));
+		dstr_cat(&font_image_path, filename);
+
 		if (filter->font_image == NULL) {
 			filter->font_image = bzalloc(sizeof(gs_image_file_t));
 		} else {
@@ -88,24 +139,60 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 			obs_leave_graphics();
 
 		}
+		filter->font_num_chars = num_chars;
+		dstr_free(&font_image_path);
 	}
-	filter->font_num_chars = 14.0f;
-	dstr_free(&font_image_path);
+	
+	
 }
 
 void matrix_rain_filter_defaults(obs_data_t *settings)
 {
 	UNUSED_PARAMETER(settings);
+	obs_data_set_default_int(settings, "matrix_char_set", 1);
+	obs_data_set_default_double(settings, "matrix_rain_scale", 0.40);
+	obs_data_set_default_double(settings, "matrix_rain_noise_shift", 0.0);
+	obs_data_set_default_bool(settings, "matrix_rain_colorize", false);
+	obs_data_set_default_int(settings, "matrix_rain_text_color", 0xFF89f76e);
+	obs_data_set_default_int(settings, "matrix_rain_background_color", 0xFF000000);
+	obs_data_set_default_double(settings, "matrix_min_brightness", 0.0);
+	obs_data_set_default_double(settings, "matrix_max_brightness", 1.0);
+	obs_data_set_default_double(settings, "matrix_min_fade_value", 0.0);
+	obs_data_set_default_double(settings, "matrix_active_rain_brightness", 0.3);
+	obs_data_set_default_double(settings, "matrix_fade_distance", 0.8);
+	obs_data_set_default_double(settings, "matrix_speed_factor", 1.0);
+	obs_data_set_default_double(settings, "matrix_bloom_radius", 6.0);
+	obs_data_set_default_double(settings, "matrix_bloom_threshold", 0.3);
+	obs_data_set_default_double(settings, "matrix_bloom_intensity", 2.25);
 }
 
 void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 				   obs_properties_t *props)
 {
-	UNUSED_PARAMETER(data);
+	matrix_rain_filter_data_t *filter = data->active_filter_data;
+
+	obs_property_t *char_set_list = obs_properties_add_list(
+		props, "matrix_char_set", obs_module_text("RetroEffects.MatrixRain.CharSet"),
+		OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_INT);
+
+	obs_data_array_t *data_array = NULL;
+
+	data_array = obs_data_get_array(filter->textures_data, "textures");
+
+	obs_property_list_add_int(char_set_list, obs_module_text("RetroEffects.MatrixRain.CustomCharSet"), 0);
+
+	for (size_t i = 0; i < obs_data_array_count(data_array); i++) {
+		obs_data_t *preset = obs_data_array_item(data_array, i);
+		const char *name = obs_data_get_string(preset, "name");
+		obs_property_list_add_int(char_set_list, name, i + 1);
+		obs_data_release(preset);
+	}
+
 	obs_properties_add_float_slider(
 		props, "matrix_rain_scale",
-		obs_module_text("RetroEffects.MatrixRain.Scale"), 0.1, 20.0,
-		0.1);
+		obs_module_text("RetroEffects.MatrixRain.Scale"), 0.01, 20.0,
+		0.01);
 
 	obs_properties_add_float_slider(
 		props, "matrix_rain_noise_shift",
@@ -123,13 +210,56 @@ void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 	obs_properties_add_color_alpha(
 		props, "matrix_rain_background_color",
 		obs_module_text("RetroEffects.MatrixRain.BackgroundColor"));
+
+	obs_properties_add_float_slider(
+		props, "matrix_min_brightness",
+		obs_module_text("RetroEffects.MatrixRain.BlackLevel"),  0.0, 1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_max_brightness",
+		obs_module_text("RetroEffects.MatrixRain.WhiteLevel"), 0.0, 1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_min_fade_value",
+		obs_module_text("RetroEffects.MatrixRain.MinFadeValue"), 0.0,
+		1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_active_rain_brightness",
+		obs_module_text("RetroEffects.MatrixRain.ActiveRainBrightness"), 0.0,
+		1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_fade_distance",
+		obs_module_text("RetroEffects.MatrixRain.FadeDistance"),
+		0.0, 1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_speed_factor",
+		obs_module_text("RetroEffects.MatrixRain.RainSpeed"), 0.0,
+		10.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_bloom_radius",
+		obs_module_text("RetroEffects.MatrixRain.BloomRadius"), 0.0, 20.0,
+		0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_bloom_threshold",
+		obs_module_text("RetroEffects.MatrixRain.BloomThreshold"), 0.0,
+		1.0, 0.01);
+
+	obs_properties_add_float_slider(
+		props, "matrix_bloom_intensity",
+		obs_module_text("RetroEffects.MatrixRain.BloomIntensity"), 0.0,
+		3.0, 0.01);
 }
 
 void matrix_rain_filter_video_tick(retro_effects_filter_data_t *data,
 				   float seconds)
 {
 	matrix_rain_filter_data_t *filter = data->active_filter_data;
-	filter->local_time += seconds;
+	filter->local_time += filter->speed_factor * seconds;
 }
 
 void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
@@ -156,8 +286,10 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 		return;
 	}
 
-	base->output_texrender =
-		create_or_reset_texrender(base->output_texrender);
+	//base->output_texrender =
+	//	create_or_reset_texrender(base->output_texrender);
+	filter->matrix_rain_texrender =
+		create_or_reset_texrender(filter->matrix_rain_texrender);
 
 	if (filter->param_uv_size) {
 		struct vec2 uv_size;
@@ -203,6 +335,30 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_vec4(filter->param_background_color,
 				   &filter->background_color);
 	}
+	if (filter->param_min_brightness) {
+		gs_effect_set_float(filter->param_min_brightness,
+				    filter->min_brightness);
+	}
+
+	if (filter->param_max_brightness) {
+		gs_effect_set_float(filter->param_max_brightness,
+				    filter->max_brightness);
+	}
+
+	if (filter->param_max_brightness) {
+		gs_effect_set_float(filter->param_min_fade_value,
+				    filter->min_fade_value);
+	}
+
+	if (filter->param_active_rain_brightness) {
+		gs_effect_set_float(filter->param_active_rain_brightness,
+				    filter->active_rain_brightness);
+	}
+
+	if (filter->param_fade_distance) {
+		gs_effect_set_float(filter->param_fade_distance,
+				    filter->fade_distance);
+	}
 
 	set_render_parameters();
 	set_blending_parameters();
@@ -210,16 +366,27 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 	struct dstr technique;
 	dstr_init_copy(&technique, "Draw");
 
-	if (gs_texrender_begin(base->output_texrender, base->width,
+	if (gs_texrender_begin(filter->matrix_rain_texrender, base->width,
 			       base->height)) {
 		gs_ortho(0.0f, (float)base->width, 0.0f, (float)base->height,
 			 -100.0f, 100.0f);
 		while (gs_effect_loop(effect, technique.array))
 			gs_draw_sprite(image, 0, base->width, base->height);
-		gs_texrender_end(base->output_texrender);
+		gs_texrender_end(filter->matrix_rain_texrender);
 	}
 	dstr_free(&technique);
 	gs_blend_state_pop();
+
+	gs_texture_t *matrix_rain_texture =
+		gs_texrender_get_texture(filter->matrix_rain_texrender);
+
+	data->bloom_data->brightness_threshold = 0.4f;
+
+	bloom_render(matrix_rain_texture, data->bloom_data);
+
+	gs_texrender_t *tmp = base->output_texrender;
+	base->output_texrender = data->bloom_data->output;
+	data->bloom_data->output = tmp;
 }
 
 static void matrix_rain_set_functions(retro_effects_filter_data_t *filter)
@@ -281,11 +448,9 @@ static void matrix_rain_load_effect(matrix_rain_filter_data_t *filter)
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "font_image") == 0) {
 				filter->param_font_image = param;
-			} else if (strcmp(info.name, "font_texture_size") ==
-				   0) {
+			} else if (strcmp(info.name, "font_texture_size") == 0) {
 				filter->param_font_texture_size = param;
-			} else if (strcmp(info.name,
-					  "font_texture_num_chars") == 0) {
+			} else if (strcmp(info.name, "font_texture_num_chars") == 0) {
 				filter->param_font_texture_num_chars = param;
 			} else if (strcmp(info.name, "scale") == 0) {
 				filter->param_scale = param;
@@ -299,6 +464,16 @@ static void matrix_rain_load_effect(matrix_rain_filter_data_t *filter)
 				filter->param_text_color = param;
 			} else if (strcmp(info.name, "background_color") == 0) {
 				filter->param_background_color = param;
+			} else if (strcmp(info.name, "min_brightness") == 0) {
+				filter->param_min_brightness = param;
+			} else if (strcmp(info.name, "max_brightness") == 0) {
+				filter->param_max_brightness = param;
+			} else if (strcmp(info.name, "min_fade_value") == 0) {
+				filter->param_min_fade_value = param;
+			} else if (strcmp(info.name, "active_rain_brightness") == 0) {
+				filter->param_active_rain_brightness = param;
+			} else if (strcmp(info.name, "fade_distance") == 0) {
+				filter->param_fade_distance = param;
 			}
 		}
 	}

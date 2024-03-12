@@ -1,5 +1,12 @@
 #include "noise-functions.effect"
 
+// Curve for fade off
+// Sliders for bloom:  bloom radius, intensity, and threshold
+
+// Ability for user to make their own font texture
+// Source Sampling for colors
+// Angle of attack
+
 #define EPS 1.e-6
 uniform float4x4 ViewProj;               // No input
 uniform texture2d image;                 // No input
@@ -13,6 +20,11 @@ uniform float local_time;                // Comes from time/calcuated
 uniform bool colorize;                   // INPUT
 uniform float4 text_color;               // INPUT
 uniform float4 background_color;         // INPUT
+uniform float min_brightness;
+uniform float max_brightness;
+uniform float min_fade_value;
+uniform float active_rain_brightness;
+uniform float fade_distance;
 
 sampler_state textureSampler{
     Filter = Linear;
@@ -44,27 +56,44 @@ float4 mainImage(VertData v_in) : TARGET
 	float char_width = font_texture_size.x / font_texture_num_chars;
 
 	float2 coord = v_in.uv * uv_size;
-	float2 uv = float2(floor(coord.x / char_width / scale) * char_width * scale, floor(coord.y / char_height / scale) * char_height * scale) / uv_size.xy;
 
+	// UV Coordinate of center of box where character will go.
+	float2 uv = float2(floor(coord.x / char_width / scale) * char_width * scale, floor(coord.y / char_height / scale) * char_height * scale) / uv_size.xy;
+	float char_noise = hash31(float3(uv * uv_size + float2(noise_shift,  0.0), 1.0));
+	float rotation_speed = hash31(float3(uv * uv_size, 10.0));
+	
 	float noise_shift_u = floor(noise_shift / char_width / scale) * char_width * scale / uv_size.x;
 	float2 sub_pos = float2(frac(coord.x / scale / char_width), frac(coord.y / scale / char_height));
 
 	float2 noise = whiteNoise2D((uv - float2(noise_shift_u, 0.0)) * float2(uv_size.x, 1), 12345);
 	//float2 noise = hash32(float3(uv - float2(noise_shift_u, 0.0) * float2(uv_size.x, 1), 0.0));
 	
-	float rain_speed = 1.0 + noise.x * 7.0;
+	float rain_speed = (1.0 + noise.x * 7.0);
 	float rain_phase = noise.y;
 
 	float t = local_time;
 	float rainY = frac(t / rain_speed);
 
-	float rain = abs(uv.y - rainY) < 0.02 ? 1.0 : 0.0;
+	float rainY_px = rainY * uv_size.y;
+	float rain_uv = (floor(rainY_px / char_height / scale) * char_height * scale)/uv_size.y;
+	float rain = abs(uv.y - rain_uv) < 0.002 ? 1.0 : 0.0;
 	float rain_scale = 1.0;
-	if (uv.y > rainY)
+
+	if (uv.y >= rain_uv)
 	{
-		rain_scale = 0.73;
+		rain_scale = uv.y - rain_uv;
+	}
+	else
+	{
+		rain_scale = 1.0 - (rain_uv - uv.y);
 	}
 
+	rain_scale = rain_scale / fade_distance - (1.0 / fade_distance - 1.0);
+	
+	rain_scale = rain_scale * (1.0 - min_fade_value) + min_fade_value;
+	rotation_speed = rotation_speed * (9.0 * (rain) + 1.0);
+
+	
 	float4 col = image.Sample(textureSampler, uv);
 	if (col.a < EPS)
 	{
@@ -72,14 +101,21 @@ float4 mainImage(VertData v_in) : TARGET
 	}
 
 	float g = min(gray(col.rgb), 0.99);
-	float char_uv = floor(g * float(font_texture_num_chars)) / float(font_texture_num_chars);
+
+	// g -> [0, 1]
+	// range -> [0.2, 0.8]
+	rain_scale *= (g / (max_brightness - min_brightness) + min_brightness);
+	float char_uv = fmod((floor(char_noise * float(font_texture_num_chars)) + (rotation_speed * local_time - frac(rotation_speed * local_time))), font_texture_num_chars) / float(font_texture_num_chars);
 
 	float2 sampleUv = float2(char_uv, 0.0) + float2(1.0 / float(font_texture_num_chars), 1.0) * sub_pos;
 
 	float4 cha = font_image.Sample(textureSampler, sampleUv);
 	cha = float4(1.0 - cha.r, 1.0 - cha.g, 1.0 - cha.b, 1.0 - gray(cha.rgb));
 	float4 pixel = colorize ? float4(col.rgb / max(col.r, max(col.g, col.b)), col.a) : text_color;
-	return cha * (float4(rain_scale, rain_scale, rain_scale, 1.0) * pixel + rain) + (1.0 - cha) * background_color;
+	pixel = rain > 0.5 ? (pixel * (1.0 - active_rain_brightness) + float4(1.0, 1.0, 1.0, pixel.a) * active_rain_brightness) : pixel;
+	rain_scale = rain > 0.5 ? 1.0 : rain_scale;
+	return cha * rain_scale * pixel + (1.0 - cha * rain_scale) * background_color;
+	//return cha * (float4(rain_scale, rain_scale, rain_scale, 1.0) * pixel) + (1.0 - cha) * background_color;
 }
 
 technique Draw

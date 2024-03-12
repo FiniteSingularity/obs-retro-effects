@@ -28,6 +28,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/obs-retro-effects.h
 	src/obs-utils.c
 	src/obs-utils.h
+	src/blur/bloom.c
+	src/blur/bloom.h
 	src/blur/blur.c
 	src/blur/blur.h
 	src/blur/gaussian-kernel.c
