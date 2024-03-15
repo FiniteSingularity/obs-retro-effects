@@ -1,0 +1,107 @@
+<nb-layout>
+  <nb-layout-header fixed>
+    <h3>Retro Effects - Matrix Rain Texture Generator</h3>
+  </nb-layout-header>
+  <nb-layout-column>
+    <nb-card>
+      <nb-card-body>
+        <form>
+          <div class="row">
+            <div class="col-sm-6 form-group">
+              <label class="label" for="fontFamilyInput">Font Family</label>
+              <input nbInput fullWidth type="text" id="fontFamilyInput" [(ngModel)]="fontFamily" (input)="updateFont()"
+                placeholder="Default: mono" name="fontFamily" />
+            </div>
+            <div class="col-sm-2 form-group">
+              <label class="label" for="fontSizeInput">Font Size</label>
+              <input nbInput fullWidth type="number" id="fontSizeInput" name="fontSize" [(ngModel)]="fontSize"
+                (input)="updateFont()" min=0.1 max=1000.0 step=.01 value="2.25" />
+            </div>
+            <div class="col-sm-4 form-group">
+              <label class="label" for="fontUnitSelector">Unit</label>
+              <nb-select fullWidth id="fontUnitSelector" name="fontUnit" [(ngModel)]="fontUnit" (change)="updateFont()">
+                <nb-option value="em" selected>em</nb-option>
+                <nb-option value="rem">rem</nb-option>
+                <nb-option value="px">px</nb-option>
+                <nb-option value="ch">ch</nb-option>
+              </nb-select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-2 form-group">
+              <label class="label" for="charWidthInput">Character Spacing</label>
+              <input nbInput fullWidth type="number" id="charWidthInput" name="charWidth" [(ngModel)]="charWidth"
+                (input)="updateFont()" min=0.1 max=1000.0 step=.01 />
+            </div>
+            <div class="col-sm-4 form-group">
+              <label class="label" for="charWidthUnitSelector">Unit</label>
+              <nb-select fullWidth id="charWidthUnitSelector" name="charWidthUnit" [(ngModel)]="charWidthUnit"
+                (change)="updateFont()">
+                <nb-option value="em" selected>em</nb-option>
+                <nb-option value="rem">rem</nb-option>
+                <nb-option value="px">px</nb-option>
+                <nb-option value="ch">ch</nb-option>
+              </nb-select>
+            </div>
+            <div class="col-sm-2 form-group">
+              <label class="label" for="charHeightInput">Texture Height</label>
+              <input nbInput fullWidth type="number" id="charHeightInput" name="charHeight" [(ngModel)]="charHeight"
+                (input)="updateFont()" min=0.1 max=1000.0 step=.01 />
+            </div>
+            <div class="col-sm-4 form-group">
+              <label class="label" for="charHeightUnitSelector">Unit</label>
+              <nb-select fullWidth id="charHeightUnitSelector" name="charHeightUnit" [(ngModel)]="charHeightUnit"
+                (change)="updateFont()">
+                <nb-option value="em" selected>em</nb-option>
+                <nb-option value="rem">rem</nb-option>
+                <nb-option value="px">px</nb-option>
+                <nb-option value="ch">ch</nb-option>
+              </nb-select>
+            </div>
+          </div>
+          <div class="row justify-content-end">
+            <div class="col-sm-2 form-group">
+              <label class="label" for="lineHeightInput">Line Height</label>
+              <input nbInput fullWidth type="number" id="lineHeightInput" name="lineHeight" [(ngModel)]="lineHeight"
+                (input)="updateFont()" min=0.1 max=1000.0 step=.01 />
+            </div>
+            <div class="col-sm-4 form-group">
+              <label class="label" for="lineHeightUnitSelector">Unit</label>
+              <nb-select fullWidth id="lineHeightUnitSelector" name="lineHeightUnit" [(ngModel)]="lineHeightUnit"
+                (change)="updateFont()">
+                <nb-option value="em" selected>em</nb-option>
+                <nb-option value="rem">rem</nb-option>
+                <nb-option value="px">px</nb-option>
+                <nb-option value="ch">ch</nb-option>
+              </nb-select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-2 form-group"><nb-checkbox labelPosition="end" name="bold" [(ngModel)]="bold"
+                (change)="updateFont()">Bold</nb-checkbox>
+            </div>
+            <div class="col-sm-2 form-group"><nb-checkbox labelPosition="end" name="italic" [(ngModel)]="italic"
+                (change)="updateFont()">Italic</nb-checkbox>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12 form-group">
+              <label class="label" for="charSetInput">Chararcters</label>
+              <textarea nbInput fullWidth name="chars" id="charSetInput" [(ngModel)]="chars" (input)="updateSet()"
+                placeholder="e.g. $REWFt45gr#tbfj!*567TY^&m%YGH^M9@"></textarea>
+            </div>
+          </div>
+          <div #outputSet id="outputSet" [ngStyle]="style"><span *ngFor="let character of characterArray"
+              [ngStyle]="charStyle">{{ character
+              }}</span>
+          </div>
+          <div>{{ characterArray.length }} Characters</div>
+        </form>
+      </nb-card-body>
+      <nb-card-footer>
+        <button nbButton type="button" (click)="takeAPicture()">Generate Texture</button>
+      </nb-card-footer>
+    </nb-card>
+  </nb-layout-column>
+  <nb-layout-footer></nb-layout-footer>
+</nb-layout>

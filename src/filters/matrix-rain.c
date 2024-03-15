@@ -15,6 +15,8 @@ void matrix_rain_create(retro_effects_filter_data_t *filter)
 	data->textures_data = obs_data_create_from_json_file(filepath.array);
 	dstr_free(&filepath);
 
+	dstr_init_copy(&data->custom_texture_file, "a");
+
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	matrix_rain_filter_defaults(settings);
 	obs_data_release(settings);
@@ -47,6 +49,8 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "matrix_rain_text_color");
 	obs_data_unset_user_value(settings, "matrix_rain_background_color");
 	obs_data_release(settings);
+
+	dstr_free(&data->custom_texture_file);
 
 	bfree(filter->active_filter_data);
 	filter->active_filter_data = NULL;
@@ -104,46 +108,69 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 
 	if (filter->char_set != (uint32_t)obs_data_get_int(settings, "matrix_char_set")) {
 		filter->char_set = (uint32_t)obs_data_get_int(settings, "matrix_char_set");
+		dstr_copy(&filter->custom_texture_file, "a");
+		if (filter->char_set != 0) {
 
-		if (filter->char_set == 0) {
-			return;
+			obs_data_array_t *data_array = obs_data_get_array(
+				filter->textures_data, "textures");
+
+			obs_data_t *texture_dat = obs_data_array_item(
+				data_array, filter->char_set - 1);
+
+			const char *filename =
+				obs_data_get_string(texture_dat, "file");
+			float num_chars =
+				(float)obs_data_get_int(texture_dat, "chars");
+
+			struct dstr font_image_path = {0};
+			dstr_cat(
+				&font_image_path,
+				obs_get_module_data_path(obs_current_module()));
+			dstr_cat(&font_image_path, filename);
+
+			set_character_texture(filter, font_image_path.array,
+					      num_chars);
+			dstr_free(&font_image_path);
 		}
-
-		obs_data_array_t *data_array = obs_data_get_array(
-			filter->textures_data, "textures");
-
-		obs_data_t *texture_dat = obs_data_array_item(data_array, filter->char_set - 1);
-
-		const char *filename = obs_data_get_string(texture_dat, "file");
-		float num_chars = (float)obs_data_get_int(texture_dat, "chars");
-
-		struct dstr font_image_path = {0};
-		dstr_cat(&font_image_path,
-			 obs_get_module_data_path(obs_current_module()));
-		dstr_cat(&font_image_path, filename);
-
-		if (filter->font_image == NULL) {
-			filter->font_image = bzalloc(sizeof(gs_image_file_t));
-		} else {
-			obs_enter_graphics();
-			gs_image_file_free(filter->font_image);
-			obs_leave_graphics();
-		}
-		if (font_image_path.len > 0 && font_image_path.array) {
-			gs_image_file_init(filter->font_image,
-					   font_image_path.array);
-			obs_enter_graphics();
-			gs_image_file_init_texture(filter->font_image);
-			filter->font_texture_size.x = (float)gs_texture_get_width(filter->font_image->texture);
-			filter->font_texture_size.y = (float)gs_texture_get_height(filter->font_image->texture);
-			obs_leave_graphics();
-
-		}
-		filter->font_num_chars = num_chars;
-		dstr_free(&font_image_path);
 	}
-	
-	
+
+	if (filter->char_set == 0) {
+		filter->font_num_chars = (float)obs_data_get_int(settings, "matrix_rain_texture_chars");
+	}
+
+	const char *custom_texture_file = obs_data_get_string(settings, "matrix_rain_texture");
+	if (filter->char_set == 0 &&
+	    strlen(custom_texture_file) > 0 &&
+	    strcmp(custom_texture_file, filter->custom_texture_file.array) !=
+		    0) {
+		dstr_copy(&filter->custom_texture_file, custom_texture_file);
+		set_character_texture(filter, filter->custom_texture_file.array,
+				      filter->font_num_chars);
+	}
+
+}
+
+void set_character_texture(
+	matrix_rain_filter_data_t *filter, const char *filename, float num_chars)
+{
+	if (filter->font_image == NULL) {
+		filter->font_image = bzalloc(sizeof(gs_image_file_t));
+	} else {
+		obs_enter_graphics();
+		gs_image_file_free(filter->font_image);
+		obs_leave_graphics();
+	}
+	if (filename) {
+		gs_image_file_init(filter->font_image, filename);
+		obs_enter_graphics();
+		gs_image_file_init_texture(filter->font_image);
+		filter->font_texture_size.x = (float)gs_texture_get_width(
+			filter->font_image->texture);
+		filter->font_texture_size.y = (float)gs_texture_get_height(
+			filter->font_image->texture);
+		obs_leave_graphics();
+	}
+	filter->font_num_chars = num_chars;
 }
 
 void matrix_rain_filter_defaults(obs_data_t *settings)
@@ -188,6 +215,26 @@ void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 		obs_property_list_add_int(char_set_list, name, i + 1);
 		obs_data_release(preset);
 	}
+
+	obs_property_set_modified_callback(char_set_list, setting_char_set_modified);
+
+	obs_properties_t *custom_texture_group = obs_properties_create();
+
+	obs_properties_add_path(
+		custom_texture_group, "matrix_rain_texture",
+		obs_module_text("RetroEffects.MatrixRain.CharacterTexture"), OBS_PATH_FILE,
+		"Textures (*.bmp *.tga *.png *.jpeg *.jpg *.gif);;", NULL);
+
+	obs_properties_add_int(
+		custom_texture_group, "matrix_rain_texture_chars",
+		obs_module_text("RetroEffects.MatrixRain.CharacterTextureCount"),
+		1, 255, 1
+	);
+
+	obs_properties_add_group(
+		props, "matrix_rain_custom_texture_group",
+		obs_module_text("RetroEffects.MatrixRain.CustomCharacters"),
+		OBS_GROUP_NORMAL, custom_texture_group);
 
 	obs_properties_add_float_slider(
 		props, "matrix_rain_scale",
@@ -253,6 +300,15 @@ void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 		props, "matrix_bloom_intensity",
 		obs_module_text("RetroEffects.MatrixRain.BloomIntensity"), 0.0,
 		3.0, 0.01);
+}
+
+bool setting_char_set_modified(obs_properties_t *props,
+			       obs_property_t *property,
+			       obs_data_t *settings)
+{
+	uint32_t texture = (uint32_t)obs_data_get_int(settings, "matrix_char_set");
+	setting_visibility("matrix_rain_custom_texture_group", texture == 0, props);
+	return true;
 }
 
 void matrix_rain_filter_video_tick(retro_effects_filter_data_t *data,

@@ -19,6 +19,7 @@
 !README.md
 !installer.iss.in
 !resource.rc.in
+!matrix-rain-webapp
 
 # Exclude lock files
 *.lock.json

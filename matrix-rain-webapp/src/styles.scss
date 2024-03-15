@@ -1,0 +1,33 @@
+/* You can add global styles to this file, and also import other style files */
+
+.label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.row {
+    margin-bottom: 15px;
+}
+
+#outputSet {
+    font-family: var(--font-family, mono);
+    font-size: var(--font-size, 2.25em);
+    color: black;
+    background-color: white;
+    white-space: nowrap;
+    overflow: none;
+    text-align: center;
+    height: 1.25em;
+    line-height: 1.25em;
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+
+    span {
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+}

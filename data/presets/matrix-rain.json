@@ -8,8 +8,8 @@
 		},
 		{
 			"name": "ASCII 70 Chars",
-			"file": "/images/ascii-font-1-1260x36x70chars.png",
-			"chars": 70
+			"file": "/images/ascii-test.png",
+			"chars": 33
 		},
 		{
 			"name": "ASCII 10 Chars",
