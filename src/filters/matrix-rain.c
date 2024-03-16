@@ -43,11 +43,24 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "matrix_char_set");
 	obs_data_unset_user_value(settings, "matrix_rain_scale");
 	obs_data_unset_user_value(settings, "matrix_rain_noise_shift");
 	obs_data_unset_user_value(settings, "matrix_rain_colorize");
 	obs_data_unset_user_value(settings, "matrix_rain_text_color");
 	obs_data_unset_user_value(settings, "matrix_rain_background_color");
+	obs_data_unset_user_value(settings, "matrix_min_brightness");
+	obs_data_unset_user_value(settings, "matrix_max_brightness");
+	obs_data_unset_user_value(settings, "matrix_min_fade_value");
+	obs_data_unset_user_value(settings, "matrix_active_rain_brightness");
+	obs_data_unset_user_value(settings, "matrix_fade_distance");
+	obs_data_unset_user_value(settings, "matrix_speed_factor");
+	obs_data_unset_user_value(settings, "matrix_bloom_radius");
+	obs_data_unset_user_value(settings, "matrix_bloom_threshold");
+	obs_data_unset_user_value(settings, "matrix_bloom_intensity");
+	obs_data_unset_user_value(settings, "matrix_rain_texture");
+	obs_data_unset_user_value(settings, "matrix_rain_texture_chars");
+
 	obs_data_release(settings);
 
 	dstr_free(&data->custom_texture_file);
@@ -183,15 +196,12 @@ void matrix_rain_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "matrix_rain_scale", 0.40);
 	obs_data_set_default_double(settings, "matrix_rain_noise_shift", 0.0);
 	obs_data_set_default_bool(settings, "matrix_rain_colorize", false);
-	obs_data_set_default_int(settings, "matrix_rain_text_color",
-				 0xFF89f76e);
-	obs_data_set_default_int(settings, "matrix_rain_background_color",
-				 0xFF000000);
+	obs_data_set_default_int(settings, "matrix_rain_text_color", 0xFF89f76e);
+	obs_data_set_default_int(settings, "matrix_rain_background_color", 0xFF000000);
 	obs_data_set_default_double(settings, "matrix_min_brightness", 0.0);
 	obs_data_set_default_double(settings, "matrix_max_brightness", 1.0);
 	obs_data_set_default_double(settings, "matrix_min_fade_value", 0.0);
-	obs_data_set_default_double(settings, "matrix_active_rain_brightness",
-				    0.3);
+	obs_data_set_default_double(settings, "matrix_active_rain_brightness", 0.3);
 	obs_data_set_default_double(settings, "matrix_fade_distance", 0.8);
 	obs_data_set_default_double(settings, "matrix_speed_factor", 1.0);
 	obs_data_set_default_double(settings, "matrix_bloom_radius", 6.0);
@@ -240,6 +250,9 @@ void matrix_rain_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text(
 			"RetroEffects.MatrixRain.CharacterTextureCount"),
 		1, 255, 1);
+
+	obs_properties_add_text(custom_texture_group, "app_info", MATRIX_APP_INFO,
+				OBS_TEXT_INFO);
 
 	obs_properties_add_group(
 		props, "matrix_rain_custom_texture_group",

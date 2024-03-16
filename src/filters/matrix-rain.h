@@ -4,6 +4,13 @@
 #include "../obs-retro-effects.h"
 #include "../blur/bloom.h"
 
+#define MATRIX_APP_INFO                                                                        \
+	"<a href=\"https://finitesingularity.github.io/matrix-rain-tex-gen/\">Click Here</a> " \
+	"to use the matrix-rain texture web app to generate a texture file. Set your font, size " \
+        "and other parameters, then click the Generate Texture button, save the texture to your " \
+        "computer, and select it in the 'Texture File' field above. Then set the 'Character Count' " \
+        "field to the number of characters in your texture."
+
 struct matrix_rain_filter_data;
 typedef struct matrix_rain_filter_data matrix_rain_filter_data_t;
 
