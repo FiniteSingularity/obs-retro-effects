@@ -2,7 +2,6 @@
 
 uniform float4x4 ViewProj;
 uniform texture2d image;
-uniform texture2d background;
 
 uniform float2 uv_size;
 uniform float2 texel_step;

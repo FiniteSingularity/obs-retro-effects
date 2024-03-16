@@ -9,7 +9,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(obs-retro-effects VERSION 0.0.7)
+project(obs-retro-effects VERSION 0.0.8)
 set(PROJECT_FULL_NAME "Retro Effects")
 
 # Set new UUIDs when you start to create a new plugin.
@@ -28,6 +28,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/obs-retro-effects.h
 	src/obs-utils.c
 	src/obs-utils.h
+	src/blur/bloom.c
+	src/blur/bloom.h
 	src/blur/blur.c
 	src/blur/blur.h
 	src/blur/gaussian-kernel.c

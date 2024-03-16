@@ -30,11 +30,13 @@ struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;
 
 typedef struct blur_data blur_data_t;
+typedef struct bloom_data bloom_data_t;
 
 struct retro_effects_filter_data {
 	base_filter_data_t *base;
 	void *active_filter_data;
 	blur_data_t *blur_data;
+	bloom_data_t *bloom_data;
 
 	int active_filter;
 	bool initial_load;
