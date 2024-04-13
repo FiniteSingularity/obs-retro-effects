@@ -88,6 +88,8 @@ void fmv_filter_defaults(obs_data_t *settings)
 void fmv_filter_properties(retro_effects_filter_data_t *data,
 					    obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
+
 	obs_properties_add_float_slider(props, "fmv_px_scale", obs_module_text("RetroEffects.FMV.PxScale"), 1.0f, 16.0f, 0.01f );
 	obs_properties_add_int_slider(props, "fmv_colors_per_channel", obs_module_text("RetroEffects.FMV.ColorsPerChannel"), 1, 256, 1 );
 	obs_properties_add_float_slider(props, "fmv_quality", obs_module_text("RetroEffects.FMV.Quality"), 0.0f, 1.0f, 0.01f );
@@ -104,6 +106,9 @@ void fmv_filter_properties(retro_effects_filter_data_t *data,
 
 void fmv_bilinear_downscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, int srcHeight, int destWidth, int destHeight)
 {
+	UNUSED_PARAMETER(srcWidth);
+	UNUSED_PARAMETER(srcHeight);
+
 	set_render_parameters();
 	set_blending_parameters();
 
