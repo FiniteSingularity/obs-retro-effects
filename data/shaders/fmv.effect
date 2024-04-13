@@ -1,0 +1,373 @@
+// FMV (RPZA) shader
+// by Millennium Cyborg
+
+// Ported to FiniteSingularity's OBS Retro Effects plugin
+
+// Loosely based on the encoding method in ffmpeg's RPZA encoder:
+// https://ffmpeg.org/doxygen/trunk/rpzaenc_8c_source.html
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform texture2d prev_frame;
+uniform float prev_frame_valid;
+uniform float colors_per_channel;
+uniform float threshold_prev_frame;
+uniform float threshold_solid;
+uniform float threshold_gradient;
+
+// #define FMV_DEBUG_COLORS
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+// From libobs/data/color.effect
+// Can't get the relevant include to work at the moment
+
+float srgb_linear_to_nonlinear_channel(float u)
+{
+	return (u <= 0.0031308) ? (12.92 * u) : ((1.055 * pow(u, 1. / 2.4)) - 0.055);
+}
+
+float3 srgb_linear_to_nonlinear(float3 v)
+{
+	return float3(srgb_linear_to_nonlinear_channel(v.r), srgb_linear_to_nonlinear_channel(v.g), srgb_linear_to_nonlinear_channel(v.b));
+}
+
+float srgb_nonlinear_to_linear_channel(float u)
+{
+	return (u <= 0.04045) ? (u / 12.92) : pow((u + 0.055) / 1.055, 2.4);
+}
+
+float3 srgb_nonlinear_to_linear(float3 v)
+{
+	return float3(srgb_nonlinear_to_linear_channel(v.r), srgb_nonlinear_to_linear_channel(v.g), srgb_nonlinear_to_linear_channel(v.b));
+}
+
+// UV: proportion across source texture, 0 to 1
+// px: output-scaled pixels, 0 to uv_size-1
+
+float2 pxFromUv(float2 uv)
+{
+	return floor(uv * uv_size.xy);
+}
+
+float2 uvFromPx(float2 tx)
+{
+	return (tx + 0.5) / uv_size.xy;
+}
+
+float4 sampleSource(float2 px)
+{
+	// Sample, nearest-neighbour
+	float4 col = image.Sample(textureSampler, uvFromPx(px));
+
+	col.rgb = srgb_linear_to_nonlinear(col.rgb);
+
+	return col;
+}
+
+float4 samplePrev(float2 px)
+{
+	// Sample, nearest-neighbour
+	float4 col = prev_frame.Sample(textureSampler, uvFromPx(px));
+
+	col.rgb = srgb_linear_to_nonlinear(col.rgb);
+
+	return col;
+}
+
+float3 quantize(float3 color, float dither)
+{
+	return floor(color.rgb * colors_per_channel + dither) / colors_per_channel;
+}
+
+float2 mod(float2 x, float2 y)
+{
+	return x - y * floor(x / y);
+}
+
+float get_bayer(float2 px)
+{
+	int bayer4[16] =
+	{
+		0, 8, 2, 10,
+		12, 4, 14, 6,
+		3, 11, 1, 9,
+		15, 7, 13, 5
+	};
+	float2 sample_coord = mod(px, float2(4.0, 4.0));
+	return float(bayer4[int(sample_coord.y) * 4 + int(sample_coord.x)]) / 16.0;
+}
+
+float4 ApplyDitherNoise(float4 color, float2 px)
+{
+	float noise = get_bayer(px);
+	color.rgb = quantize(color.rgb, noise);
+	return color;
+}
+
+float4 sampleWithDither(float2 px)
+{
+	float4 col = sampleSource(px);
+	col = ApplyDitherNoise(col, px);
+	return col;
+}
+
+// rotate components
+float3 rotateCol(float3 col, int amount)
+{
+	amount %= 3;
+
+	if (amount == 0)
+		return col;
+   
+	if (amount == 1)
+		return col.gbr;
+    
+	return col.brg;
+}
+
+float calcSquareError(float3 ref, float3 col)
+{
+	float3 d = saturate(abs(col - ref));
+	return dot(d, d);
+}
+
+// Calculating per-pixel isn't ideal but it'll do for now
+void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out float3 endCol)
+{
+	// What I think the correct ordering is:
+	// 1) add dither mask scaled down appropriately (/16 then /32) and offset appropriately (-8/16)
+	// 2) calc gradient
+	// 3) find nearest colours in rgb555
+	// Here I follow the method in the ffpmeg RPZA encoder:
+	// ( https://ffmpeg.org/doxygen/trunk/rpzaenc_8c_source.html )
+	// Pick as primary the channel with the largest range of values.
+	// That channel has a gradient from its min to its max.
+	// For the other two channels, use a least squares regression.
+
+	// Find min/max per channel
+	float3 minCol = { 1, 1, 1 };
+	float3 maxCol = { 0, 0, 0 };
+
+	float3 sum = { 0, 0, 0 }; // r, g, b
+	float3 sumSq = { 0, 0, 0 }; // rr, gg, bb
+	float3 sumProd = { 0, 0, 0 }; // bg, gr, rb (index by (max+cur)%3)
+
+	for (int bx = 0; bx < 4; ++bx)
+	{
+		for (int by = 0; by < 4; ++by)
+		{
+			int2 px = blockCoord * 4 + int2(bx, by);
+			float3 col = sampleWithDither(px).rgb;
+			minCol = min(minCol, col);
+			maxCol = max(maxCol, col);
+			sum += col;
+			sumSq += col * col;
+			sumProd += float3(col.b * col.g, col.g * col.r, col.r * col.b);
+		}
+	}
+
+	// Find max range across channels
+	int maxChanIdx = 0;
+	float maxChanRange = 0;
+	float3 chanRange = abs(minCol - maxCol);
+	for (int c = 0; c < 3; ++c)
+	{
+		if (chanRange[c] > maxChanRange)
+		{
+			maxChanIdx = c;
+			maxChanRange = chanRange[c];
+		}
+	}
+
+	float3 maxChanMask = (int3(0, 1, 2) == maxChanIdx) ? 1.0f : 0.0f;
+
+	sumProd = rotateCol(sumProd, maxChanIdx);
+
+	// Find slope per channel vs max channel
+	float3 m = { 1, 1, 1 };
+	float3 b = { 0, 0, 0 };
+
+	float d = 16.0f * sumSq[maxChanIdx] - sum[maxChanIdx] * sum[maxChanIdx];
+
+	mean = sum / 16.0f;
+
+	// Avoid div by 0. All the pixels in the block are the same colour or very close.
+	if (abs(d) < 0.00001f)
+	{
+		startCol = endCol = mean;
+	}
+	else
+	{
+		// This is a rearrangement of the least squares regression formula
+		float sumMax = sum[maxChanIdx];
+		m = (16.0f * sumProd - sumMax * sum) / d;
+		b = (sum - m * sumMax) / 16.0f;
+
+		startCol = maxChanMask ? minCol : m * minCol[maxChanIdx] + b;
+		endCol = maxChanMask ? maxCol : m * maxCol[maxChanIdx] + b;
+	}
+
+	startCol = saturate(startCol);
+	endCol = saturate(endCol);
+}
+
+float4 rpzaEncode(float2 sourcePx)
+{
+	int2 coordInBlock = (int2) floor(sourcePx % 4);
+	int2 blockCoord = (int2) floor(sourcePx / 4);
+
+	// NOTE: error calcs not going to be as accurate as they could be because they're not taking the quantization into account
+
+	// Compute the gradient by least squares
+	float3 mean = float3(0, 0, 0);
+	float3 startCol = float3(0, 0, 0);
+	float3 endCol = float3(1, 1, 1);
+	calcGradient(blockCoord, mean, startCol, endCol);
+
+	mean = quantize(mean, 0);
+	startCol = quantize(startCol, 0);
+	endCol = quantize(endCol, 0);
+
+	// Compute 4-col gradient
+	float3 gradCol[4];
+                
+	for (int i = 0; i < 4; ++i)
+	{
+		float3 p = lerp(startCol, endCol, i / 3.0);
+		// convert to rgb555
+		gradCol[i] = quantize(p, 0);
+	}
+
+	// Iterate pixels and compute total square error then sqrt mean square error
+
+	float sumSqErr0 = 0.0f;
+	float sumSqErr1 = 0.0f;
+	float sumSqErr4 = 0.0f;
+
+	for (int bx = 0; bx < 4; ++bx)
+	{
+		for (int by = 0; by < 4; ++by)
+		{
+			int2 px = blockCoord * 4 + int2(bx, by);
+			float3 col = sampleWithDither(px).rgb;
+
+			sumSqErr0 += calcSquareError(col, samplePrev(px).rgb);
+            
+			sumSqErr1 += calcSquareError(col, mean);
+
+			// Find closest color in gradient
+			float minErr = 9999999.0;
+			float3 minErrCol = { 1, 1, 1 };
+			for (int i = 0; i < 4; ++i)
+			{
+				float3 p = gradCol[i];
+				float err = calcSquareError(p, col);
+				if (err < minErr)
+				{
+					minErrCol = p;
+					minErr = err;
+				}
+			}
+                        
+			sumSqErr4 += minErr;
+		}
+	}
+
+	float err0 = sqrt(sumSqErr0 / (3 * 16.0));
+	float err1 = sqrt(sumSqErr1 / (3 * 16.0));
+	float err4 = sqrt(sumSqErr4 / (3 * 16.0));
+	
+	float3 col = sampleWithDither(sourcePx).rgb;
+
+	// option 0: keep previous block
+	if (prev_frame_valid > 0.5f && err0 < threshold_prev_frame)
+	{
+		// Adding a debug col for this doesn't quite work
+		return float4(samplePrev(sourcePx).rgb, 1);
+	}
+
+	// option 1: single color
+	if (err1 < threshold_solid)
+	{
+#ifdef FMV_DEBUG_COLORS
+		return float4(1, 0, 0, 1);
+#else
+		return float4(mean, 1);
+#endif
+	}
+
+	// option 2: 4 colors
+	if (err4 < threshold_gradient)
+	{
+		// Find closest color in gradient
+		float minErr = 9999999.0;
+		float3 minErrCol = { 1, 1, 1 };
+		for (int i = 0; i < 4; ++i)
+		{
+			float3 p = gradCol[i];
+			float err = calcSquareError(p, col);
+			if (err < minErr)
+			{
+				minErrCol = p;
+				minErr = err;
+			}
+		}
+#ifdef FMV_DEBUG_COLORS
+		return float4(0, 1, 0, 1);
+#else
+		return float4(minErrCol, 1);
+#endif
+	}
+
+	// option 3: 16 colors
+#ifdef FMV_DEBUG_COLORS
+	return float4(0, 0, 1, 1);
+#else
+	return float4(quantize(col, 0), 1);
+#endif
+}
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float2 uv = v_in.uv;
+	float2 px = pxFromUv(uv);
+
+	float4 col = sampleWithDither(px);
+
+	col.rgb = rpzaEncode(px).rgb;
+
+	// Convert srgb to linear for output
+	col.rgb = srgb_nonlinear_to_linear(col.rgb);
+
+	return col;
+}
+
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
