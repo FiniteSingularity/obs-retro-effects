@@ -17,6 +17,15 @@ uniform float threshold_solid;
 uniform float threshold_gradient;
 
 // #define FMV_DEBUG_COLORS
+// #define SRGB_CONV
+
+#ifdef SRGB_CONV
+#define INPUT_CONV srgb_linear_to_nonlinear
+#define OUTPUT_CONV srgb_nonlinear_to_linear
+#else
+#define INPUT_CONV
+#define OUTPUT_CONV
+#endif
 
 sampler_state textureSampler{
     Filter = Linear;
@@ -73,7 +82,7 @@ float4 sampleSource(float2 px)
 	// Sample, nearest-neighbour
 	float4 col = image.Sample(textureSampler, uvFromPx(px));
 
-	col.rgb = srgb_linear_to_nonlinear(col.rgb);
+	col.rgb = INPUT_CONV(col.rgb);
 
 	return col;
 }
@@ -83,7 +92,7 @@ float4 samplePrev(float2 px)
 	// Sample, nearest-neighbour
 	float4 col = prev_frame.Sample(textureSampler, uvFromPx(px));
 
-	col.rgb = srgb_linear_to_nonlinear(col.rgb);
+	col.rgb = INPUT_CONV(col.rgb);
 
 	return col;
 }
@@ -337,7 +346,7 @@ float4 rpzaEncode(float2 sourcePx)
 #ifdef FMV_DEBUG_COLORS
 	return float4(0, 0, 1, 1);
 #else
-	return float4(quantize(col, 0), 1);
+	return float4(col, 1);
 #endif
 }
 
@@ -357,7 +366,7 @@ float4 mainImage(VertData v_in) : TARGET
 	col.rgb = rpzaEncode(px).rgb;
 
 	// Convert srgb to linear for output
-	col.rgb = srgb_nonlinear_to_linear(col.rgb);
+	col.rgb = OUTPUT_CONV(col.rgb);
 
 	return col;
 }
