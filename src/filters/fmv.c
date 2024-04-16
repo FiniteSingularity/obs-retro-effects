@@ -63,9 +63,9 @@ void fmv_filter_update(retro_effects_filter_data_t *data,
 	filter->threshold_gradient = (float)obs_data_get_double(settings, "fmv_threshold_gradient");
 
 	if (!filter->custom_thresholds) {
-		filter->threshold_prev_frame = lerp(1.34f, 0.0f, filter->quality); // TODO fine-tune
-		filter->threshold_solid = lerp(0.54f, 0.0f, filter->quality);
-		filter->threshold_gradient = lerp(1.2f, 0.0f, filter->quality);
+		filter->threshold_prev_frame = lerp(0.5f, 0.0f, filter->quality); // TODO fine-tune
+		filter->threshold_solid = lerp(0.2f, 0.0f, filter->quality);
+		filter->threshold_gradient = lerp(1.0f, 0.0f, filter->quality);
 	}
 
 	if (filter->reload_effect) {
