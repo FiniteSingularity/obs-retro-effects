@@ -295,22 +295,18 @@ float4 rpzaEncode(float2 sourcePx)
 			sumSqErr4 += minErr;
 		}
 	}
-
-	float err0 = sqrt(sumSqErr0 / (3 * 16.0));
-	float err1 = sqrt(sumSqErr1 / (3 * 16.0));
-	float err4 = sqrt(sumSqErr4 / (3 * 16.0));
 	
 	float3 col = sampleWithDither(sourcePx).rgb;
 
 	// option 0: keep previous block
-	if (prev_frame_valid > 0.5f && err0 < threshold_prev_frame)
+	if (prev_frame_valid > 0.5f && sumSqErr0 < threshold_prev_frame * threshold_prev_frame)
 	{
 		// Adding a debug col for this doesn't quite work
 		return float4(samplePrev(sourcePx).rgb, 1);
 	}
 
 	// option 1: single color
-	if (err1 < threshold_solid)
+	if (sumSqErr1 < threshold_solid * threshold_solid)
 	{
 #ifdef FMV_DEBUG_COLORS
 		return float4(1, 0, 0, 1);
@@ -320,7 +316,7 @@ float4 rpzaEncode(float2 sourcePx)
 	}
 
 	// option 2: 4 colors
-	if (err4 < threshold_gradient)
+	if (sumSqErr4 < threshold_gradient * threshold_gradient)
 	{
 		// Find closest color in gradient
 		float minErr = 9999999.0;

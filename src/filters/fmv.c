@@ -63,9 +63,9 @@ void fmv_filter_update(retro_effects_filter_data_t *data,
 	filter->threshold_gradient = (float)obs_data_get_double(settings, "fmv_threshold_gradient");
 
 	if (!filter->custom_thresholds) {
-		filter->threshold_prev_frame = lerp(0.2f, 0.0f, filter->quality);
-		filter->threshold_solid = lerp(0.08f, 0.0f, filter->quality);
-		filter->threshold_gradient = lerp(0.18f, 0.0f, filter->quality);
+		filter->threshold_prev_frame = lerp(1.34f, 0.0f, filter->quality); // TODO fine-tune
+		filter->threshold_solid = lerp(0.54f, 0.0f, filter->quality);
+		filter->threshold_gradient = lerp(1.2f, 0.0f, filter->quality);
 	}
 
 	if (filter->reload_effect) {
@@ -80,9 +80,9 @@ void fmv_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "fmv_colors_per_channel", 32);
 	obs_data_set_default_double(settings, "fmv_quality", 0.85);
 	obs_data_set_default_bool(settings, "fmv_custom_thresholds", false);
-	obs_data_set_default_double(settings, "fmv_threshold_prev_frame", 0.021);
-	obs_data_set_default_double(settings, "fmv_threshold_solid", 0.015);
-	obs_data_set_default_double(settings, "fmv_threshold_gradient", 0.027);
+	obs_data_set_default_double(settings, "fmv_threshold_prev_frame", 0.14);
+	obs_data_set_default_double(settings, "fmv_threshold_solid", 0.1);
+	obs_data_set_default_double(settings, "fmv_threshold_gradient", 0.18);
 }
 
 void fmv_filter_properties(retro_effects_filter_data_t *data,
@@ -96,9 +96,9 @@ void fmv_filter_properties(retro_effects_filter_data_t *data,
 
 	obs_properties_t *thresholds_group = obs_properties_create();
 
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_prev_frame", obs_module_text("RetroEffects.FMV.ThresholdPrevFrame"), 0.0f, 0.15f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_solid", obs_module_text("RetroEffects.FMV.ThresholdSolid"), 0.0f, 0.15f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_gradient", obs_module_text("RetroEffects.FMV.ThresholdGradient"), 0.0f, 0.15f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_prev_frame", obs_module_text("RetroEffects.FMV.ThresholdPrevFrame"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_solid", obs_module_text("RetroEffects.FMV.ThresholdSolid"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_gradient", obs_module_text("RetroEffects.FMV.ThresholdGradient"), 0.0f, 1.0f, 0.01f );
 
 	obs_properties_add_group(props, "fmv_custom_thresholds", obs_module_text("RetroEffects.FMV.CustomThresholds"), OBS_GROUP_CHECKABLE, thresholds_group);
 }
