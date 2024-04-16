@@ -40,12 +40,12 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/chromatic-aberration.h
 	src/filters/crt.c
 	src/filters/crt.h
+  src/filters/codec.c
+	src/filters/codec.h
 	src/filters/dither.c
 	src/filters/dither.h
 	src/filters/frame-skip.c
 	src/filters/frame-skip.h
-	src/filters/fmv.c
-	src/filters/fmv.h
 	src/filters/interlace.c
 	src/filters/interlace.h
 	src/filters/matrix-rain.c

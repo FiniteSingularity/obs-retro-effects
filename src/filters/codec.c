@@ -1,21 +1,21 @@
-#include "fmv.h"
+#include "codec.h"
 #include "../obs-utils.h"
 
-void fmv_create(retro_effects_filter_data_t *filter)
+void codec_create(retro_effects_filter_data_t *filter)
 {
-	fmv_filter_data_t *data = bzalloc(sizeof(fmv_filter_data_t));
+	codec_filter_data_t *data = bzalloc(sizeof(codec_filter_data_t));
 	filter->active_filter_data = data;
 	data->reload_effect = false;
-	fmv_set_functions(filter);
+	codec_set_functions(filter);
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
-	fmv_filter_defaults(settings);
+	codec_filter_defaults(settings);
 	obs_data_release(settings);
-	fmv_load_effect(data);
+	codec_load_effect(data);
 }
 
-void fmv_destroy(retro_effects_filter_data_t *filter)
+void codec_destroy(retro_effects_filter_data_t *filter)
 {
-	fmv_filter_data_t *data = filter->active_filter_data;
+	codec_filter_data_t *data = filter->active_filter_data;
 	obs_enter_graphics();
 	if (data->effect_fmv) {
 		gs_effect_destroy(data->effect_fmv);
@@ -32,13 +32,13 @@ void fmv_destroy(retro_effects_filter_data_t *filter)
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
-	obs_data_unset_user_value(settings, "fmv_px_scale");
-	obs_data_unset_user_value(settings, "fmv_colors_per_channel");
-	obs_data_unset_user_value(settings, "fmv_quality");
-	obs_data_unset_user_value(settings, "fmv_custom_thresholds");
-	obs_data_unset_user_value(settings, "fmv_threshold_prev_frame");
-	obs_data_unset_user_value(settings, "fmv_threshold_solid");
-	obs_data_unset_user_value(settings, "fmv_threshold_gradient");
+	obs_data_unset_user_value(settings, "codec_px_scale");
+	obs_data_unset_user_value(settings, "codec_colors_per_channel");
+	obs_data_unset_user_value(settings, "codec_quality");
+	obs_data_unset_user_value(settings, "codec_custom_thresholds");
+	obs_data_unset_user_value(settings, "codec_threshold_prev_frame");
+	obs_data_unset_user_value(settings, "codec_threshold_solid");
+	obs_data_unset_user_value(settings, "codec_threshold_gradient");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
@@ -50,17 +50,18 @@ float lerp(float x, float y, float a)
 	return (1 - a) * x + a * y;
 }
 
-void fmv_filter_update(retro_effects_filter_data_t *data,
+void codec_filter_update(retro_effects_filter_data_t *data,
 					obs_data_t *settings)
 {
-	fmv_filter_data_t *filter = data->active_filter_data;
-	filter->px_scale = (float)obs_data_get_double(settings, "fmv_px_scale");
-	filter->colors_per_channel = (int)obs_data_get_int(settings, "fmv_colors_per_channel");
-	filter->quality = (float)obs_data_get_double(settings, "fmv_quality");
-	filter->custom_thresholds = obs_data_get_bool(settings, "fmv_custom_thresholds");
-	filter->threshold_prev_frame = (float)obs_data_get_double(settings, "fmv_threshold_prev_frame");
-	filter->threshold_solid = (float)obs_data_get_double(settings, "fmv_threshold_solid");
-	filter->threshold_gradient = (float)obs_data_get_double(settings, "fmv_threshold_gradient");
+	codec_filter_data_t *filter = data->active_filter_data;
+	filter->codec_type = (uint32_t)obs_data_get_int(settings, "codec_type");
+	filter->px_scale = (float)obs_data_get_double(settings, "codec_px_scale");
+	filter->colors_per_channel = (int)obs_data_get_int(settings, "codec_colors_per_channel");
+	filter->quality = (float)obs_data_get_double(settings, "codec_quality");
+	filter->custom_thresholds = obs_data_get_bool(settings, "codec_custom_thresholds");
+	filter->threshold_prev_frame = (float)obs_data_get_double(settings, "codec_threshold_prev_frame");
+	filter->threshold_solid = (float)obs_data_get_double(settings, "codec_threshold_solid");
+	filter->threshold_gradient = (float)obs_data_get_double(settings, "codec_threshold_gradient");
 
 	if (!filter->custom_thresholds) {
 		filter->threshold_prev_frame = lerp(0.5f, 0.0f, filter->quality); // TODO fine-tune
@@ -70,41 +71,53 @@ void fmv_filter_update(retro_effects_filter_data_t *data,
 
 	if (filter->reload_effect) {
 		filter->reload_effect = false;
-		fmv_load_effect(filter);
+		codec_load_effect(filter);
 	}
 }
 
-void fmv_filter_defaults(obs_data_t *settings)
+void codec_filter_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_double(settings, "fmv_px_scale", 5.0);
-	obs_data_set_default_int(settings, "fmv_colors_per_channel", 32);
-	obs_data_set_default_double(settings, "fmv_quality", 0.85);
-	obs_data_set_default_bool(settings, "fmv_custom_thresholds", false);
-	obs_data_set_default_double(settings, "fmv_threshold_prev_frame", 0.14);
-	obs_data_set_default_double(settings, "fmv_threshold_solid", 0.1);
-	obs_data_set_default_double(settings, "fmv_threshold_gradient", 0.18);
+	obs_data_set_default_int(settings, "codec_type", CODEC_TYPE_RPZA);
+	obs_data_set_default_double(settings, "codec_px_scale", 5.0);
+	obs_data_set_default_int(settings, "codec_colors_per_channel", 32);
+	obs_data_set_default_double(settings, "codec_quality", 0.85);
+	obs_data_set_default_bool(settings, "codec_custom_thresholds", false);
+	obs_data_set_default_double(settings, "codec_threshold_prev_frame", 0.14);
+	obs_data_set_default_double(settings, "codec_threshold_solid", 0.1);
+	obs_data_set_default_double(settings, "codec_threshold_gradient", 0.18);
 }
 
-void fmv_filter_properties(retro_effects_filter_data_t *data,
+void codec_filter_properties(retro_effects_filter_data_t *data,
 					    obs_properties_t *props)
 {
 	UNUSED_PARAMETER(data);
 
-	obs_properties_add_float_slider(props, "fmv_px_scale", obs_module_text("RetroEffects.FMV.PxScale"), 1.0f, 16.0f, 0.01f );
-	obs_properties_add_int_slider(props, "fmv_colors_per_channel", obs_module_text("RetroEffects.FMV.ColorsPerChannel"), 1, 256, 1 );
-	obs_properties_add_float_slider(props, "fmv_quality", obs_module_text("RetroEffects.FMV.Quality"), 0.0f, 1.0f, 0.01f );
+	// Codec Type
+	obs_property_t *codec_type = obs_properties_add_list(
+		props, "codec_type", obs_module_text("RetroEffects.Dither.Type"),
+		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+
+	obs_property_list_add_int(codec_type,
+				  obs_module_text(CODEC_TYPE_RPZA_LABEL),
+				  CODEC_TYPE_RPZA);
+	obs_property_set_modified_callback(codec_type,
+					   codec_type_modified);
+
+	obs_properties_add_float_slider(props, "codec_px_scale", obs_module_text("RetroEffects.Codec.PxScale"), 1.0f, 16.0f, 0.01f );
+	obs_properties_add_int_slider(props, "codec_colors_per_channel", obs_module_text("RetroEffects.Codec.ColorsPerChannel"), 1, 256, 1 );
+	obs_properties_add_float_slider(props, "codec_quality", obs_module_text("RetroEffects.Codec.Quality"), 0.0f, 1.0f, 0.01f );
 
 	obs_properties_t *thresholds_group = obs_properties_create();
 
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_prev_frame", obs_module_text("RetroEffects.FMV.ThresholdPrevFrame"), 0.0f, 1.0f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_solid", obs_module_text("RetroEffects.FMV.ThresholdSolid"), 0.0f, 1.0f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "fmv_threshold_gradient", obs_module_text("RetroEffects.FMV.ThresholdGradient"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_threshold_prev_frame", obs_module_text("RetroEffects.Codec.ThresholdPrevFrame"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_threshold_solid", obs_module_text("RetroEffects.Codec.ThresholdSolid"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_threshold_gradient", obs_module_text("RetroEffects.Codec.ThresholdGradient"), 0.0f, 1.0f, 0.01f );
 
-	obs_properties_add_group(props, "fmv_custom_thresholds", obs_module_text("RetroEffects.FMV.CustomThresholds"), OBS_GROUP_CHECKABLE, thresholds_group);
+	obs_properties_add_group(props, "codec_custom_thresholds", obs_module_text("RetroEffects.Codec.CustomThresholds"), OBS_GROUP_CHECKABLE, thresholds_group);
 }
 
 
-void fmv_bilinear_downscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, int srcHeight, int destWidth, int destHeight)
+void codec_bilinear_downscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, int srcHeight, int destWidth, int destHeight)
 {
 	UNUSED_PARAMETER(srcWidth);
 	UNUSED_PARAMETER(srcHeight);
@@ -141,7 +154,7 @@ void fmv_bilinear_downscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWi
 	gs_blend_state_pop(); // matches gs_blend_state_push in set_blending_parameters()
 }
 
-void fmv_area_upscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, int srcHeight, int destWidth, int destHeight)
+void codec_area_upscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, int srcHeight, int destWidth, int destHeight)
 {
 	set_render_parameters();
 	set_blending_parameters();
@@ -187,10 +200,10 @@ void fmv_area_upscale(gs_texrender_t* src, gs_texrender_t* dest, int srcWidth, i
 }
 
 
-void fmv_filter_video_render(retro_effects_filter_data_t *data)
+void codec_filter_video_render(retro_effects_filter_data_t *data)
 {
 	base_filter_data_t *base = data->base;
-	fmv_filter_data_t *filter = data->active_filter_data;
+	codec_filter_data_t *filter = data->active_filter_data;
 
 	get_input_source(base);
 	if (!base->input_texture_generated || filter->loading_effect) {
@@ -221,7 +234,7 @@ void fmv_filter_video_render(retro_effects_filter_data_t *data)
 	// Downscale current input frame (bilinear downscale)
 	// IN: base->input_texrender
 	// OUT: filter->texrender_downsampled_input
-	fmv_bilinear_downscale(base->input_texrender, filter->texrender_downsampled_input, base->width, base->height, pxWidth, pxHeight);
+	codec_bilinear_downscale(base->input_texrender, filter->texrender_downsampled_input, base->width, base->height, pxWidth, pxHeight);
 
 	// Check for previous frame.
 	// If none available (due to first frame or resize etc), copy in downscaled frame just so we have something the right size
@@ -231,7 +244,7 @@ void fmv_filter_video_render(retro_effects_filter_data_t *data)
 	gs_texture_t *prev_frame_tex = gs_texrender_get_texture(filter->texrender_previous_frame);
 	if (!prev_frame_tex) {
 		prev_frame_valid = false;
-		fmv_bilinear_downscale(filter->texrender_downsampled_input, filter->texrender_previous_frame, pxWidth, pxHeight, pxWidth, pxHeight);
+		codec_bilinear_downscale(filter->texrender_downsampled_input, filter->texrender_previous_frame, pxWidth, pxHeight, pxWidth, pxHeight);
 	}
 
 	// Render FMV effect
@@ -275,6 +288,8 @@ void fmv_filter_video_render(retro_effects_filter_data_t *data)
 
 	gs_texture_t *downsampled_input_tex = gs_texrender_get_texture(filter->texrender_downsampled_input);
 
+	// Once we have multiple codec types, select between different techniques instead of just "Draw"
+
 	if (gs_texrender_begin(filter->texrender_downsampled_output, pxWidth, pxHeight)) {
 		gs_ortho(0.0f, (float)pxWidth, 0.0f, (float)pxHeight,
 			 -100.0f, 100.0f);
@@ -288,26 +303,26 @@ void fmv_filter_video_render(retro_effects_filter_data_t *data)
 	// Copy this frame to prev frame
 	// IN: filter->texrender_downsampled_output
 	// OUT: filter->texrender_previous_frame
-	fmv_bilinear_downscale(filter->texrender_downsampled_output, filter->texrender_previous_frame, pxWidth, pxHeight, pxWidth, pxHeight);
+	codec_bilinear_downscale(filter->texrender_downsampled_output, filter->texrender_previous_frame, pxWidth, pxHeight, pxWidth, pxHeight);
 
 	// Upscale to output tex (area upscale)
 	// IN: filter->texrender_downsampled_output
 	// OUT: base->output_texrender
-	fmv_area_upscale(filter->texrender_downsampled_output, base->output_texrender, pxWidth, pxHeight, base->width, base->height);
+	codec_area_upscale(filter->texrender_downsampled_output, base->output_texrender, pxWidth, pxHeight, base->width, base->height);
 }
 
 static void
-fmv_set_functions(retro_effects_filter_data_t *filter)
+codec_set_functions(retro_effects_filter_data_t *filter)
 {
-	filter->filter_properties = fmv_filter_properties;
-	filter->filter_video_render = fmv_filter_video_render;
-	filter->filter_destroy = fmv_destroy;
-	filter->filter_defaults = fmv_filter_defaults;
-	filter->filter_update = fmv_filter_update;
+	filter->filter_properties = codec_filter_properties;
+	filter->filter_video_render = codec_filter_video_render;
+	filter->filter_destroy = codec_destroy;
+	filter->filter_defaults = codec_filter_defaults;
+	filter->filter_update = codec_filter_update;
 	filter->filter_video_tick = NULL;
 }
 
-static void fmv_load_effect(fmv_filter_data_t *filter)
+static void codec_load_effect(codec_filter_data_t *filter)
 {
 	filter->loading_effect = true;
 	if (filter->effect_fmv != NULL) {
@@ -320,7 +335,7 @@ static void fmv_load_effect(fmv_filter_data_t *filter)
 	char *shader_text = NULL;
 	struct dstr filename = {0};
 	dstr_cat(&filename, obs_get_module_data_path(obs_current_module()));
-	dstr_cat(&filename, "/shaders/fmv.effect");
+	dstr_cat(&filename, "/shaders/codec.effect");
 	shader_text = load_shader_from_file(filename.array);
 	char *errors = NULL;
 	dstr_free(&filename);
@@ -333,7 +348,7 @@ static void fmv_load_effect(fmv_filter_data_t *filter)
 	bfree(shader_text);
 	if (filter->effect_fmv == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load fmv.effect file.  Errors:\n%s",
+		     "[obs-composite-blur] Unable to load codec.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);
@@ -367,4 +382,15 @@ static void fmv_load_effect(fmv_filter_data_t *filter)
 		}
 	}
 	filter->loading_effect = false;
+}
+
+
+static bool codec_type_modified(obs_properties_t *props, obs_property_t *p,
+				 obs_data_t *settings)
+{
+	// Once we add more codec types, control parameter visibility here
+	UNUSED_PARAMETER(props);
+	UNUSED_PARAMETER(p);
+	UNUSED_PARAMETER(settings);
+	return true;
 }
