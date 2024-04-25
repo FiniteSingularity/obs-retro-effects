@@ -306,7 +306,7 @@ static void load_output_effect(retro_effects_filter_data_t *filter)
 	bfree(shader_text);
 	if (filter->base->output_effect == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load output.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load output.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);
