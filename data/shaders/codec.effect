@@ -352,7 +352,7 @@ VertData mainTransform(VertData v_in)
 	return v_in;
 }
 
-float4 mainImage(VertData v_in) : TARGET
+float4 mainImageRPZA(VertData v_in) : TARGET
 {
 	float2 uv = v_in.uv;
 	float2 px = pxFromUv(uv);
@@ -368,11 +368,11 @@ float4 mainImage(VertData v_in) : TARGET
 }
 
 
-technique Draw
+technique DrawRPZA
 {
 	pass
 	{
 		vertex_shader = mainTransform(v_in);
-		pixel_shader = mainImage(v_in);
+		pixel_shader = mainImageRPZA(v_in);
 	}
 }

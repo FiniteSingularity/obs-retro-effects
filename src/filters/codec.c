@@ -293,7 +293,7 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 	if (gs_texrender_begin(filter->texrender_downsampled_output, pxWidth, pxHeight)) {
 		gs_ortho(0.0f, (float)pxWidth, 0.0f, (float)pxHeight,
 			 -100.0f, 100.0f);
-		while (gs_effect_loop(effect, "Draw"))
+		while (gs_effect_loop(effect, "DrawRPZA"))
 			gs_draw_sprite(downsampled_input_tex, 0, pxWidth, pxHeight);
 		gs_texrender_end(filter->texrender_downsampled_output);
 	}
