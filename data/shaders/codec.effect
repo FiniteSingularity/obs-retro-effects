@@ -12,9 +12,9 @@ uniform float2 uv_size;
 uniform texture2d prev_frame;
 uniform float prev_frame_valid;
 uniform float colors_per_channel;
-uniform float threshold_prev_frame;
-uniform float threshold_solid;
-uniform float threshold_gradient;
+uniform float rpza_threshold_prev_frame;
+uniform float rpza_threshold_solid;
+uniform float rpza_threshold_gradient;
 
 // #define FMV_DEBUG_COLORS
 // #define SRGB_CONV
@@ -299,14 +299,14 @@ float4 rpzaEncode(float2 sourcePx)
 	float3 col = sampleWithDither(sourcePx).rgb;
 
 	// option 0: keep previous block
-	if (prev_frame_valid > 0.5f && sumSqErr0 < threshold_prev_frame * threshold_prev_frame)
+	if (prev_frame_valid > 0.5f && sumSqErr0 < rpza_threshold_prev_frame * rpza_threshold_prev_frame)
 	{
 		// Adding a debug col for this doesn't quite work
 		return float4(samplePrev(sourcePx).rgb, 1);
 	}
 
 	// option 1: single color
-	if (sumSqErr1 < threshold_solid * threshold_solid)
+	if (sumSqErr1 < rpza_threshold_solid * rpza_threshold_solid)
 	{
 #ifdef FMV_DEBUG_COLORS
 		return float4(1, 0, 0, 1);
@@ -316,7 +316,7 @@ float4 rpzaEncode(float2 sourcePx)
 	}
 
 	// option 2: 4 colors
-	if (sumSqErr4 < threshold_gradient * threshold_gradient)
+	if (sumSqErr4 < rpza_threshold_gradient * rpza_threshold_gradient)
 	{
 		// Find closest color in gradient
 		float minErr = 9999999.0;

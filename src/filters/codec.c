@@ -36,9 +36,9 @@ void codec_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "codec_colors_per_channel");
 	obs_data_unset_user_value(settings, "codec_quality");
 	obs_data_unset_user_value(settings, "codec_custom_thresholds");
-	obs_data_unset_user_value(settings, "codec_threshold_prev_frame");
-	obs_data_unset_user_value(settings, "codec_threshold_solid");
-	obs_data_unset_user_value(settings, "codec_threshold_gradient");
+	obs_data_unset_user_value(settings, "codec_rpza_threshold_prev_frame");
+	obs_data_unset_user_value(settings, "codec_rpza_threshold_solid");
+	obs_data_unset_user_value(settings, "codec_rpza_threshold_gradient");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
@@ -59,14 +59,14 @@ void codec_filter_update(retro_effects_filter_data_t *data,
 	filter->colors_per_channel = (int)obs_data_get_int(settings, "codec_colors_per_channel");
 	filter->quality = (float)obs_data_get_double(settings, "codec_quality");
 	filter->custom_thresholds = obs_data_get_bool(settings, "codec_custom_thresholds");
-	filter->threshold_prev_frame = (float)obs_data_get_double(settings, "codec_threshold_prev_frame");
-	filter->threshold_solid = (float)obs_data_get_double(settings, "codec_threshold_solid");
-	filter->threshold_gradient = (float)obs_data_get_double(settings, "codec_threshold_gradient");
+	filter->rpza_threshold_prev_frame = (float)obs_data_get_double(settings, "codec_rpza_threshold_prev_frame");
+	filter->rpza_threshold_solid = (float)obs_data_get_double(settings, "codec_rpza_threshold_solid");
+	filter->rpza_threshold_gradient = (float)obs_data_get_double(settings, "codec_rpza_threshold_gradient");
 
 	if (!filter->custom_thresholds) {
-		filter->threshold_prev_frame = lerp(0.5f, 0.0f, filter->quality); // TODO fine-tune
-		filter->threshold_solid = lerp(0.2f, 0.0f, filter->quality);
-		filter->threshold_gradient = lerp(1.0f, 0.0f, filter->quality);
+		filter->rpza_threshold_prev_frame = lerp(0.5f, 0.0f, filter->quality); // TODO fine-tune
+		filter->rpza_threshold_solid = lerp(0.2f, 0.0f, filter->quality);
+		filter->rpza_threshold_gradient = lerp(1.0f, 0.0f, filter->quality);
 	}
 
 	if (filter->reload_effect) {
@@ -82,9 +82,9 @@ void codec_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "codec_colors_per_channel", 32);
 	obs_data_set_default_double(settings, "codec_quality", 0.85);
 	obs_data_set_default_bool(settings, "codec_custom_thresholds", false);
-	obs_data_set_default_double(settings, "codec_threshold_prev_frame", 0.14);
-	obs_data_set_default_double(settings, "codec_threshold_solid", 0.1);
-	obs_data_set_default_double(settings, "codec_threshold_gradient", 0.18);
+	obs_data_set_default_double(settings, "codec_rpza_threshold_prev_frame", 0.14);
+	obs_data_set_default_double(settings, "codec_rpza_threshold_solid", 0.1);
+	obs_data_set_default_double(settings, "codec_rpza_threshold_gradient", 0.18);
 }
 
 void codec_filter_properties(retro_effects_filter_data_t *data,
@@ -109,9 +109,9 @@ void codec_filter_properties(retro_effects_filter_data_t *data,
 
 	obs_properties_t *thresholds_group = obs_properties_create();
 
-	obs_properties_add_float_slider(thresholds_group, "codec_threshold_prev_frame", obs_module_text("RetroEffects.Codec.ThresholdPrevFrame"), 0.0f, 1.0f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "codec_threshold_solid", obs_module_text("RetroEffects.Codec.ThresholdSolid"), 0.0f, 1.0f, 0.01f );
-	obs_properties_add_float_slider(thresholds_group, "codec_threshold_gradient", obs_module_text("RetroEffects.Codec.ThresholdGradient"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_rpza_threshold_prev_frame", obs_module_text("RetroEffects.Codec.ThresholdPrevFrame"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_rpza_threshold_solid", obs_module_text("RetroEffects.Codec.ThresholdSolid"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(thresholds_group, "codec_rpza_threshold_gradient", obs_module_text("RetroEffects.Codec.ThresholdGradient"), 0.0f, 1.0f, 0.01f );
 
 	obs_properties_add_group(props, "codec_custom_thresholds", obs_module_text("RetroEffects.Codec.CustomThresholds"), OBS_GROUP_CHECKABLE, thresholds_group);
 }
@@ -273,14 +273,14 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 	if (filter->param_colors_per_channel) {
 		gs_effect_set_float(filter->param_colors_per_channel, (float)filter->colors_per_channel);
 	}
-	if (filter->param_threshold_prev_frame) {
-		gs_effect_set_float(filter->param_threshold_prev_frame, filter->threshold_prev_frame);
+	if (filter->param_rpza_threshold_prev_frame) {
+		gs_effect_set_float(filter->param_rpza_threshold_prev_frame, filter->rpza_threshold_prev_frame);
 	}
-	if (filter->param_threshold_solid) {
-		gs_effect_set_float(filter->param_threshold_solid, filter->threshold_solid);
+	if (filter->param_rpza_threshold_solid) {
+		gs_effect_set_float(filter->param_rpza_threshold_solid, filter->rpza_threshold_solid);
 	}
-	if (filter->param_threshold_gradient) {
-		gs_effect_set_float(filter->param_threshold_gradient, filter->threshold_gradient);
+	if (filter->param_rpza_threshold_gradient) {
+		gs_effect_set_float(filter->param_rpza_threshold_gradient, filter->rpza_threshold_gradient);
 	}
 
 	set_render_parameters();
@@ -372,12 +372,12 @@ static void codec_load_effect(codec_filter_data_t *filter)
 				filter->param_prev_frame_valid = param;
 			} else if (strcmp(info.name, "colors_per_channel") == 0) {
 				filter->param_colors_per_channel = param;
-			} else if (strcmp(info.name, "threshold_prev_frame") == 0) {
-				filter->param_threshold_prev_frame = param;
-			} else if (strcmp(info.name, "threshold_solid") == 0) {
-				filter->param_threshold_solid = param;
-			} else if (strcmp(info.name, "threshold_gradient") == 0) {
-				filter->param_threshold_gradient = param;
+			} else if (strcmp(info.name, "rpza_threshold_prev_frame") == 0) {
+				filter->param_rpza_threshold_prev_frame = param;
+			} else if (strcmp(info.name, "rpza_threshold_solid") == 0) {
+				filter->param_rpza_threshold_solid = param;
+			} else if (strcmp(info.name, "rpza_threshold_gradient") == 0) {
+				filter->param_rpza_threshold_gradient = param;
 			}
 		}
 	}
