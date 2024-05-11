@@ -16,7 +16,7 @@ uniform float rpza_threshold_prev_frame;
 uniform float rpza_threshold_solid;
 uniform float rpza_threshold_gradient;
 
-// #define FMV_DEBUG_COLORS
+// #define RPZA_DEBUG_COLORS
 // #define SRGB_CONV
 
 #ifdef SRGB_CONV
@@ -308,7 +308,7 @@ float4 rpzaEncode(float2 sourcePx)
 	// option 1: single color
 	if (sumSqErr1 < rpza_threshold_solid * rpza_threshold_solid)
 	{
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 		return float4(1, 0, 0, 1);
 #else
 		return float4(mean, 1);
@@ -331,7 +331,7 @@ float4 rpzaEncode(float2 sourcePx)
 				minErr = err;
 			}
 		}
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 		return float4(0, 1, 0, 1);
 #else
 		return float4(minErrCol, 1);
@@ -339,7 +339,7 @@ float4 rpzaEncode(float2 sourcePx)
 	}
 
 	// option 3: 16 colors
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 	return float4(0, 0, 1, 1);
 #else
 	return float4(col, 1);
