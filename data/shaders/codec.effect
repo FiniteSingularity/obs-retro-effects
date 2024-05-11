@@ -10,7 +10,7 @@ uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
 uniform texture2d prev_frame;
-uniform float prev_frame_valid;
+uniform float is_keyframe;
 uniform float colors_per_channel;
 uniform float rpza_threshold_prev_frame;
 uniform float rpza_threshold_solid;
@@ -299,7 +299,7 @@ float4 rpzaEncode(float2 sourcePx)
 	float3 col = sampleWithDither(sourcePx).rgb;
 
 	// option 0: keep previous block
-	if (prev_frame_valid > 0.5f && sumSqErr0 < rpza_threshold_prev_frame * rpza_threshold_prev_frame)
+	if (is_keyframe < 0.5f && sumSqErr0 < rpza_threshold_prev_frame * rpza_threshold_prev_frame)
 	{
 		// Adding a debug col for this doesn't quite work
 		return float4(samplePrev(sourcePx).rgb, 1);

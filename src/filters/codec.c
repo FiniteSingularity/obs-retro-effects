@@ -6,6 +6,7 @@ void codec_create(retro_effects_filter_data_t *filter)
 	codec_filter_data_t *data = bzalloc(sizeof(codec_filter_data_t));
 	filter->active_filter_data = data;
 	data->reload_effect = false;
+	data->time_since_keyframe = 0;
 	codec_set_functions(filter);
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	codec_filter_defaults(settings);
@@ -35,6 +36,7 @@ void codec_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "codec_px_scale");
 	obs_data_unset_user_value(settings, "codec_colors_per_channel");
 	obs_data_unset_user_value(settings, "codec_quality");
+	obs_data_unset_user_value(settings, "codec_keyframe_interval");
 	obs_data_unset_user_value(settings, "codec_custom_thresholds");
 	obs_data_unset_user_value(settings, "codec_rpza_threshold_prev_frame");
 	obs_data_unset_user_value(settings, "codec_rpza_threshold_solid");
@@ -58,6 +60,7 @@ void codec_filter_update(retro_effects_filter_data_t *data,
 	filter->px_scale = (float)obs_data_get_double(settings, "codec_px_scale");
 	filter->colors_per_channel = (int)obs_data_get_int(settings, "codec_colors_per_channel");
 	filter->quality = (float)obs_data_get_double(settings, "codec_quality");
+	filter->keyframe_interval = (float)obs_data_get_double(settings, "codec_keyframe_interval");
 	filter->custom_thresholds = obs_data_get_bool(settings, "codec_custom_thresholds");
 	filter->rpza_threshold_prev_frame = (float)obs_data_get_double(settings, "codec_rpza_threshold_prev_frame");
 	filter->rpza_threshold_solid = (float)obs_data_get_double(settings, "codec_rpza_threshold_solid");
@@ -81,6 +84,7 @@ void codec_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "codec_px_scale", 5.0);
 	obs_data_set_default_int(settings, "codec_colors_per_channel", 32);
 	obs_data_set_default_double(settings, "codec_quality", 0.85);
+	obs_data_set_default_double(settings, "codec_keyframe_interval", 3.0);
 	obs_data_set_default_bool(settings, "codec_custom_thresholds", false);
 	obs_data_set_default_double(settings, "codec_rpza_threshold_prev_frame", 0.14);
 	obs_data_set_default_double(settings, "codec_rpza_threshold_solid", 0.1);
@@ -106,6 +110,7 @@ void codec_filter_properties(retro_effects_filter_data_t *data,
 	obs_properties_add_float_slider(props, "codec_px_scale", obs_module_text("RetroEffects.Codec.PxScale"), 1.0f, 16.0f, 0.01f );
 	obs_properties_add_int_slider(props, "codec_colors_per_channel", obs_module_text("RetroEffects.Codec.ColorsPerChannel"), 1, 256, 1 );
 	obs_properties_add_float_slider(props, "codec_quality", obs_module_text("RetroEffects.Codec.Quality"), 0.0f, 1.0f, 0.01f );
+	obs_properties_add_float_slider(props, "codec_keyframe_interval", obs_module_text("RetroEffects.Codec.KeyframeInterval"), 0.0f, 10.0f, 0.01f );
 
 	obs_properties_t *thresholds_group = obs_properties_create();
 
@@ -240,11 +245,23 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 	// If none available (due to first frame or resize etc), copy in downscaled frame just so we have something the right size
 	// OUT: filter->texrender_previous_frame
 
-	bool prev_frame_valid = true;
+	bool is_keyframe = false;
 	gs_texture_t *prev_frame_tex = gs_texrender_get_texture(filter->texrender_previous_frame);
 	if (!prev_frame_tex) {
-		prev_frame_valid = false;
+		is_keyframe = true;
 		codec_bilinear_downscale(filter->texrender_downsampled_input, filter->texrender_previous_frame, pxWidth, pxHeight, pxWidth, pxHeight);
+	}
+
+	if (filter->keyframe_interval > 0.0f && filter->time_since_keyframe > filter->keyframe_interval)
+	{
+		is_keyframe = true;
+		
+	}
+
+	if (is_keyframe)
+	{
+		// Note: Our keyframe interval timing calcs are all inexact and subject to drift
+		filter->time_since_keyframe = 0;
 	}
 
 	// Render FMV effect
@@ -267,8 +284,8 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 		gs_texture_t *prev_frame_tex = gs_texrender_get_texture(filter->texrender_previous_frame);
 		gs_effect_set_texture(filter->param_prev_frame, prev_frame_tex);
 	}
-	if (filter->param_prev_frame_valid) {
-		gs_effect_set_float(filter->param_prev_frame_valid, prev_frame_valid ? 1.0f : 0.0f);
+	if (filter->param_is_keyframe) {
+		gs_effect_set_float(filter->param_is_keyframe, is_keyframe);
 	}
 	if (filter->param_colors_per_channel) {
 		gs_effect_set_float(filter->param_colors_per_channel, (float)filter->colors_per_channel);
@@ -311,6 +328,14 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 	codec_area_upscale(filter->texrender_downsampled_output, base->output_texrender, pxWidth, pxHeight, base->width, base->height);
 }
 
+
+void codec_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
+{
+	codec_filter_data_t *filter = data->active_filter_data;
+	filter->time_since_keyframe += seconds;
+}
+
+
 static void
 codec_set_functions(retro_effects_filter_data_t *filter)
 {
@@ -319,7 +344,7 @@ codec_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_destroy = codec_destroy;
 	filter->filter_defaults = codec_filter_defaults;
 	filter->filter_update = codec_filter_update;
-	filter->filter_video_tick = NULL;
+	filter->filter_video_tick = codec_filter_video_tick;
 }
 
 static void codec_load_effect(codec_filter_data_t *filter)
@@ -368,8 +393,8 @@ static void codec_load_effect(codec_filter_data_t *filter)
 				filter->param_uv_size = param;
 			} else if (strcmp(info.name, "prev_frame") == 0) {
 				filter->param_prev_frame = param;
-			} else if (strcmp(info.name, "prev_frame_valid") == 0) {
-				filter->param_prev_frame_valid = param;
+			} else if (strcmp(info.name, "is_keyframe") == 0) {
+				filter->param_is_keyframe = param;
 			} else if (strcmp(info.name, "colors_per_channel") == 0) {
 				filter->param_colors_per_channel = param;
 			} else if (strcmp(info.name, "rpza_threshold_prev_frame") == 0) {
@@ -383,7 +408,6 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	}
 	filter->loading_effect = false;
 }
-
 
 static bool codec_type_modified(obs_properties_t *props, obs_property_t *p,
 				 obs_data_t *settings)
