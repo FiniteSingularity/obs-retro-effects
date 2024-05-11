@@ -8,7 +8,7 @@ struct codec_filter_data;
 typedef struct codec_filter_data codec_filter_data_t;
 
 struct codec_filter_data {
-	gs_effect_t *effect_fmv;
+	gs_effect_t *effect_codec;
 
 	gs_eparam_t *param_image;
 	gs_eparam_t *param_uv_size;

@@ -17,8 +17,8 @@ void codec_destroy(retro_effects_filter_data_t *filter)
 {
 	codec_filter_data_t *data = filter->active_filter_data;
 	obs_enter_graphics();
-	if (data->effect_fmv) {
-		gs_effect_destroy(data->effect_fmv);
+	if (data->effect_codec) {
+		gs_effect_destroy(data->effect_codec);
 	}
 	if (data->texrender_downsampled_input) {
 		gs_texrender_destroy(data->texrender_downsampled_input);
@@ -215,7 +215,7 @@ void codec_filter_video_render(retro_effects_filter_data_t *data)
 	gs_texture_t *input_tex = gs_texrender_get_texture(base->input_texrender);
 	if (!input_tex) { return; }
 
-	gs_effect_t *effect = filter->effect_fmv;
+	gs_effect_t *effect = filter->effect_codec;
 	if (!effect) { return; }
 
 	base->output_texrender =
@@ -325,10 +325,10 @@ codec_set_functions(retro_effects_filter_data_t *filter)
 static void codec_load_effect(codec_filter_data_t *filter)
 {
 	filter->loading_effect = true;
-	if (filter->effect_fmv != NULL) {
+	if (filter->effect_codec != NULL) {
 		obs_enter_graphics();
-		gs_effect_destroy(filter->effect_fmv);
-		filter->effect_fmv = NULL;
+		gs_effect_destroy(filter->effect_codec);
+		filter->effect_codec = NULL;
 		obs_leave_graphics();
 	}
 
@@ -341,12 +341,12 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	dstr_free(&filename);
 
 	obs_enter_graphics();
-	filter->effect_fmv =
+	filter->effect_codec =
 		gs_effect_create(shader_text, NULL, &errors);
 	obs_leave_graphics();
 
 	bfree(shader_text);
-	if (filter->effect_fmv == NULL) {
+	if (filter->effect_codec == NULL) {
 		blog(LOG_WARNING,
 		     "[obs-composite-blur] Unable to load codec.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
@@ -354,11 +354,11 @@ static void codec_load_effect(codec_filter_data_t *filter)
 		bfree(errors);
 	} else {
 		size_t effect_count = gs_effect_get_num_params(
-			filter->effect_fmv);
+			filter->effect_codec);
 		for (size_t effect_index = 0; effect_index < effect_count;
 		     effect_index++) {
 			gs_eparam_t *param = gs_effect_get_param_by_idx(
-				filter->effect_fmv,
+				filter->effect_codec,
 				effect_index);
 			struct gs_effect_param_info info;
 			gs_effect_get_param_info(param, &info);
