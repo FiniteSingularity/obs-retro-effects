@@ -27,6 +27,8 @@
 #define RETRO_FILTER_MATRIX_RAIN_LABEL "RetroEffects.MatrixRain"
 #define RETRO_FILTER_CODEC 10
 #define RETRO_FILTER_CODEC_LABEL "RetroEffects.Codec"
+#define RETRO_FILTER_VHS 11
+#define RETRO_FILTER_VHS_LABEL "RetroEffects.VHS"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;
