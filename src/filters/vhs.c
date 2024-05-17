@@ -25,7 +25,21 @@ void vhs_destroy(retro_effects_filter_data_t *filter)
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	//obs_data_unset_user_value(settings, "vhs_size");
-
+	obs_data_unset_user_value(settings, "vhs_wrinkle_occurrence_prob");
+	obs_data_unset_user_value(settings, "vhs_wrinkle_size");
+	obs_data_unset_user_value(settings, "vhs_wrinkle_duration");
+	obs_data_unset_user_value(settings, "vhs_jitter_min_size");
+	obs_data_unset_user_value(settings, "vhs_jitter_max_size");
+	obs_data_unset_user_value(settings, "vhs_jitter_min_period");
+	obs_data_unset_user_value(settings, "vhs_jitter_max_period");
+	obs_data_unset_user_value(settings, "vhs_jitter_min_interval");
+	obs_data_unset_user_value(settings, "vhs_jitter_max_interval");
+	obs_data_unset_user_value(settings, "vhs_pop_lines_amount");
+	obs_data_unset_user_value(settings, "vhs_head_switch_primary_thickness");
+	obs_data_unset_user_value(settings, "vhs_head_switch_primary_offset");
+	obs_data_unset_user_value(settings, "vhs_head_switch_secondary_thickness");
+	obs_data_unset_user_value(settings, "vhs_head_switch_secondary_horiz_offset");
+	obs_data_unset_user_value(settings, "vhs_head_switch_secondary_vert_amount");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);
@@ -80,6 +94,14 @@ void vhs_filter_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "vhs_jitter_max_size", 10.0);
 	obs_data_set_default_double(settings, "vhs_jitter_min_period", 0.1);
 	obs_data_set_default_double(settings, "vhs_jitter_max_period", 1.0);
+	obs_data_set_default_double(settings, "vhs_jitter_min_interval", 0.0);
+	obs_data_set_default_double(settings, "vhs_jitter_max_interval", 10.0);
+	obs_data_set_default_double(settings, "vhs_pop_lines_amount", 10.0);
+	obs_data_set_default_double(settings, "vhs_head_switch_primary_thickness", 15.0);
+	obs_data_set_default_double(settings, "vhs_head_switch_primary_offset", 30.0);
+	obs_data_set_default_double(settings, "vhs_head_switch_secondary_thickness", 15.0);
+	obs_data_set_default_double(settings, "vhs_head_switch_secondary_horiz_offset", 30.0);
+	obs_data_set_default_double(settings, "vhs_head_switch_secondary_vert_amount", 5.0);
 }
 
 void vhs_filter_properties(retro_effects_filter_data_t *data,
