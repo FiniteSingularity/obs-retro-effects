@@ -1,0 +1,78 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float wrinkle_position;
+uniform float wrinkle_size;
+uniform float pop_line_prob;
+uniform float time;
+uniform float hs_primary_thickness;
+uniform float hs_primary_offset;
+uniform float hs_secondary_thickness;
+uniform float hs_secondary_horiz_offset;
+uniform float hs_secondary_vert_offset;
+uniform float horizontal_offset;
+
+#include "noise-functions.effect"
+
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+sampler_state borderSampler {
+	Filter = Linear;
+	AddressU = Border;
+	AddressV = Border;
+	BorderColor = 0xFF000000;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	// Apply tape wrinkle
+	float2 coord = v_in.uv * uv_size;
+
+	float hs_shift = step(uv_size.y - hs_primary_thickness, coord.y) * hs_primary_offset;
+	float hs_top = uv_size.y - (hs_primary_thickness + hs_secondary_thickness + hs_secondary_vert_offset);
+	float hs_secondary_shift = step(hs_top, coord.y) * (1.0 - smoothstep(hs_top, hs_top + hs_secondary_thickness, coord.y)) * hs_secondary_horiz_offset;
+	coord.x -= hs_shift + hs_secondary_shift;
+	float2 sample_uv = (coord + float2(horizontal_offset, 0.0)) / uv_size;
+	float transition = 0.20 * wrinkle_size;
+	float ss_1 = smoothstep(wrinkle_position - wrinkle_size, wrinkle_position - wrinkle_size + transition, v_in.uv.y);
+	float ss_2 = 1.0 - smoothstep(wrinkle_position + wrinkle_size - transition, wrinkle_position + wrinkle_size, v_in.uv.y);
+	float weight = ss_1 * ss_2;
+
+	float pop_line = hash31(float3(0.0, coord.y, time));
+
+	float4 color = (1.0 - weight) * image.Sample(borderSampler, sample_uv) + weight * image.Sample(borderSampler, float2(sample_uv.x, wrinkle_position));
+	if (pop_line < pop_line_prob) {
+		pop_line = hash31(float3(coord.xy, time));
+		color = color * (1.0 - pop_line) + float4(1.0, 1.0, 1.0, color.a) * pop_line;
+	}
+	
+	return color;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}

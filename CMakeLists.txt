@@ -40,7 +40,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/chromatic-aberration.h
 	src/filters/crt.c
 	src/filters/crt.h
-  src/filters/codec.c
+  	src/filters/codec.c
 	src/filters/codec.h
 	src/filters/dither.c
 	src/filters/dither.h
@@ -54,6 +54,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/ntsc.h
 	src/filters/posterize.c
 	src/filters/posterize.h
+	src/filters/vhs.c
+	src/filters/vhs.h
 	src/version.h)
 
 if(BUILD_OUT_OF_TREE)
