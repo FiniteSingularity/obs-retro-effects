@@ -10,13 +10,13 @@ uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
 uniform texture2d prev_frame;
-uniform float prev_frame_valid;
+uniform float is_keyframe;
 uniform float colors_per_channel;
-uniform float threshold_prev_frame;
-uniform float threshold_solid;
-uniform float threshold_gradient;
+uniform float rpza_threshold_prev_frame;
+uniform float rpza_threshold_solid;
+uniform float rpza_threshold_gradient;
 
-// #define FMV_DEBUG_COLORS
+// #define RPZA_DEBUG_COLORS
 // #define SRGB_CONV
 
 #ifdef SRGB_CONV
@@ -299,16 +299,16 @@ float4 rpzaEncode(float2 sourcePx)
 	float3 col = sampleWithDither(sourcePx).rgb;
 
 	// option 0: keep previous block
-	if (prev_frame_valid > 0.5f && sumSqErr0 < threshold_prev_frame * threshold_prev_frame)
+	if (is_keyframe < 0.5f && sumSqErr0 < rpza_threshold_prev_frame * rpza_threshold_prev_frame)
 	{
 		// Adding a debug col for this doesn't quite work
 		return float4(samplePrev(sourcePx).rgb, 1);
 	}
 
 	// option 1: single color
-	if (sumSqErr1 < threshold_solid * threshold_solid)
+	if (sumSqErr1 < rpza_threshold_solid * rpza_threshold_solid)
 	{
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 		return float4(1, 0, 0, 1);
 #else
 		return float4(mean, 1);
@@ -316,7 +316,7 @@ float4 rpzaEncode(float2 sourcePx)
 	}
 
 	// option 2: 4 colors
-	if (sumSqErr4 < threshold_gradient * threshold_gradient)
+	if (sumSqErr4 < rpza_threshold_gradient * rpza_threshold_gradient)
 	{
 		// Find closest color in gradient
 		float minErr = 9999999.0;
@@ -331,7 +331,7 @@ float4 rpzaEncode(float2 sourcePx)
 				minErr = err;
 			}
 		}
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 		return float4(0, 1, 0, 1);
 #else
 		return float4(minErrCol, 1);
@@ -339,7 +339,7 @@ float4 rpzaEncode(float2 sourcePx)
 	}
 
 	// option 3: 16 colors
-#ifdef FMV_DEBUG_COLORS
+#ifdef RPZA_DEBUG_COLORS
 	return float4(0, 0, 1, 1);
 #else
 	return float4(col, 1);
@@ -352,7 +352,7 @@ VertData mainTransform(VertData v_in)
 	return v_in;
 }
 
-float4 mainImage(VertData v_in) : TARGET
+float4 mainImageRPZA(VertData v_in) : TARGET
 {
 	float2 uv = v_in.uv;
 	float2 px = pxFromUv(uv);
@@ -368,11 +368,11 @@ float4 mainImage(VertData v_in) : TARGET
 }
 
 
-technique Draw
+technique DrawRPZA
 {
 	pass
 	{
 		vertex_shader = mainTransform(v_in);
-		pixel_shader = mainImage(v_in);
+		pixel_shader = mainImageRPZA(v_in);
 	}
 }
