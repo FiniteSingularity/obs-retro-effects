@@ -29,6 +29,10 @@
 #define RETRO_FILTER_CODEC_LABEL "RetroEffects.Codec"
 #define RETRO_FILTER_VHS 11
 #define RETRO_FILTER_VHS_LABEL "RetroEffects.VHS"
+#define RETRO_FILTER_BLOOM 12
+#define RETRO_FILTER_BLOOM_LABEL "RetroEffects.Bloom"
+#define RETRO_FILTER_SCANLINES 13
+#define RETRO_FILTER_SCANLINES_LABEL "RetroEffects.Scanlines"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;

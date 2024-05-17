@@ -30,6 +30,17 @@ void ntsc_destroy(retro_effects_filter_data_t *filter)
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "ntsc_tuning_offset");
+	obs_data_unset_user_value(settings, "ntsc_luma_noise");
+	obs_data_unset_user_value(settings, "ntsc_luma_band_size");
+	obs_data_unset_user_value(settings, "ntsc_luma_band_strength");
+	obs_data_unset_user_value(settings, "ntsc_luma_band_count");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_size");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_strength");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_steps");
+	obs_data_unset_user_value(settings, "ntsc_brightness");
+	obs_data_unset_user_value(settings, "ntsc_saturation");
+
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);

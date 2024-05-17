@@ -5,7 +5,11 @@ void bloom_create(retro_effects_filter_data_t *filter)
 	bloom_data_t *data = bzalloc(sizeof(blur_data_t));
 
 	data->blur = filter->blur_data;
-	set_gaussian_radius(5.0f, data->blur);
+	data->gaussian_radius = 5.0f;
+	data->levels.x = 0.299f;
+	data->levels.y = 0.587f;
+	data->levels.z = 0.114f;
+	set_gaussian_radius(data->gaussian_radius, data->blur);
 	// Load in effects
 	load_brightness_threshold_effect(data);
 	load_bloom_combine_effect(data);
@@ -52,6 +56,11 @@ void bloom_render(gs_texture_t *texture, bloom_data_t *bloom_data)
 		return;
 	}
 
+	if (bloom_data->gaussian_radius != bloom_data->bloom_size) {
+		bloom_data->gaussian_radius = bloom_data->bloom_size;
+		set_gaussian_radius(bloom_data->gaussian_radius, bloom_data->blur);
+	}
+
 	uint32_t width = gs_texture_get_width(texture);
 	uint32_t height = gs_texture_get_height(texture);
 
@@ -63,6 +72,10 @@ void bloom_render(gs_texture_t *texture, bloom_data_t *bloom_data)
 	}
 	if (bloom_data->param_bt_threshold) {
 		gs_effect_set_float(bloom_data->param_bt_threshold, bloom_data->brightness_threshold);
+	}
+	if (bloom_data->param_bt_levels) {
+		gs_effect_set_vec3(bloom_data->param_bt_levels,
+				   &bloom_data->levels);
 	}
 
 	set_blending_parameters();
@@ -142,6 +155,8 @@ static void load_brightness_threshold_effect(bloom_data_t *filter)
 				filter->param_bt_image = param;
 			} else if (strcmp(info.name, "threshold") == 0) {
 				filter->param_bt_threshold = param;
+			} else if (strcmp(info.name, "levels") == 0) {
+				filter->param_bt_levels = param;
 			}
 		}
 	}

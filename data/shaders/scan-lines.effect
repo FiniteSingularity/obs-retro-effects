@@ -1,0 +1,110 @@
+
+#define TAU 6.2831855
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float period;
+uniform float offset;
+uniform float intensity;
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 sinImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	float v = 1.0 - intensity + intensity * (1.0 + sin(TAU * (coord.y - offset) / period)) / 2.0;
+	return float4(color.rgb * v, color.a);
+}
+
+float4 squareImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	float coord_y = fmod(coord.y - offset, period);
+	float step_val = step(0.25 * period, abs(coord_y)) * (1.0 - step(0.75 * period, abs(coord_y)));
+	float v = 1.0 - intensity + intensity * step_val;
+	return float4(color.rgb * v, color.a);
+}
+
+float4 smoothstepImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	float coord_y = fmod(coord.y - offset, period);
+	float step_val = smoothstep(0.0, 0.333 * period, abs(coord_y)) * (1.0 - smoothstep(0.667 * period, period, abs(coord_y)));
+	float v = 1.0 - intensity + intensity * step_val;
+	return float4(color.rgb * v, color.a);
+}
+
+float4 triangularImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	float4 color = image.Sample(textureSampler, v_in.uv);
+	
+	float coord_y = fmod(coord.y - offset, period);
+	//float s = 1.0 - step(0.5 * period, abs(coord_y));
+	//float m = 1.0 / (0.5 * period) * (2.0 * s - 1.0);
+	//float b = 2.0 * (1.0 - s);
+	//float step_val = m * abs(coord_y) + b;
+	float step_val = 2.0 * abs(abs(coord_y) / period - 0.5);
+	
+	//float step_val = smoothstep(0.0, 0.333 * period, abs(coord_y)) * (1.0 - smoothstep(0.667 * period, period, abs(coord_y)));
+	float v = 1.0 - intensity + intensity * step_val;
+	return float4(color.rgb * v, color.a);
+}
+
+technique DrawSin
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = sinImage(v_in);
+	}
+}
+
+technique DrawSquare
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = squareImage(v_in);
+	}
+}
+
+technique DrawSmoothstep
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = smoothstepImage(v_in);
+	}
+}
+
+technique DrawTriangular
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = triangularImage(v_in);
+	}
+}
