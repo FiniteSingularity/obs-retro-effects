@@ -64,6 +64,7 @@ void scan_lines_filter_defaults(obs_data_t *settings)
 void scan_lines_filter_properties(retro_effects_filter_data_t *data,
 				  obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	obs_property_t *scanline_profile_list = obs_properties_add_list(
 		props, "scanlines_profile",
 		obs_module_text("RetroEffects.Scanlines.Profile"),
