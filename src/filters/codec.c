@@ -348,7 +348,7 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	bfree(shader_text);
 	if (filter->effect_fmv == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load codec.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load codec.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);

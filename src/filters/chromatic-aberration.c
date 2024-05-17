@@ -255,7 +255,7 @@ chromatic_aberration_load_effect(chromatic_aberration_filter_data_t *filter)
 	bfree(shader_text);
 	if (filter->effect_chromatic_aberration == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load chromatic-aberration.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load chromatic-aberration.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);

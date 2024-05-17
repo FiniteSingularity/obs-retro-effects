@@ -358,7 +358,7 @@ static void ntsc_load_effect_encode(ntsc_filter_data_t *filter)
 
 	if (filter->effect_ntsc_encode == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load ntsc-encode.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load ntsc-encode.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);
@@ -418,7 +418,7 @@ static void ntsc_load_effect_decode(ntsc_filter_data_t *filter)
 
 	if (filter->effect_ntsc_decode == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load ntsc-decode.effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load ntsc-decode.effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);

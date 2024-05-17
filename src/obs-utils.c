@@ -75,7 +75,7 @@ gs_effect_t *load_shader_effect(gs_effect_t *effect,
 
 	if (effect == NULL) {
 		blog(LOG_WARNING,
-		     "[obs-composite-blur] Unable to load .effect file.  Errors:\n%s",
+		     "[obs-retro-effects] Unable to load .effect file.  Errors:\n%s",
 		     (errors == NULL || strlen(errors) == 0 ? "(None)"
 							    : errors));
 		bfree(errors);
