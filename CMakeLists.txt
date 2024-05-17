@@ -34,13 +34,15 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/blur/blur.h
 	src/blur/gaussian-kernel.c
 	src/blur/gaussian-kernel.h
+	src/filters/bloom-f.c
+	src/filters/bloom-f.h
 	src/filters/cathode-boot.c
 	src/filters/cathode-boot.h
 	src/filters/chromatic-aberration.c
 	src/filters/chromatic-aberration.h
 	src/filters/crt.c
 	src/filters/crt.h
-  	src/filters/codec.c
+    src/filters/codec.c
 	src/filters/codec.h
 	src/filters/dither.c
 	src/filters/dither.h
@@ -56,6 +58,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/filters/posterize.h
 	src/filters/vhs.c
 	src/filters/vhs.h
+	src/filters/scan-lines.c
+	src/filters/scan-lines.h
 	src/version.h)
 
 if(BUILD_OUT_OF_TREE)

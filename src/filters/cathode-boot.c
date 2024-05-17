@@ -34,6 +34,7 @@ void cathode_boot_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "cathode_boot_horiz_end");
 	obs_data_unset_user_value(settings, "cathode_boot_fade_start");
 	obs_data_unset_user_value(settings, "cathode_boot_fade_end");
+	obs_data_unset_user_value(settings, "cathode_boot_glow_size");
 	obs_data_release(settings);
 
 	bfree(filter->active_filter_data);

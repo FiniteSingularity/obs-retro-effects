@@ -24,10 +24,14 @@ struct bloom_data {
 
 	gs_eparam_t *param_bt_image;
 	gs_eparam_t *param_bt_threshold;
+	gs_eparam_t *param_bt_levels;
 
 	gs_eparam_t *param_combine_image;
 	gs_eparam_t *param_combine_bloom_image;
 	gs_eparam_t *param_combine_intensity;
+
+	float gaussian_radius;
+	struct vec3 levels;
 
 	float bloom_size;
 	float bloom_intensity;
