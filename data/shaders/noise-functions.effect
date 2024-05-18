@@ -140,7 +140,11 @@ float hash11(float src)
 }
 
 /* murmur hash to generate random unsigned integers */
+#ifdef OPENGL
+uint murmurHash(uvec2 x, uint seed)
+#else
 uint murmurHash(uint2 x, uint seed)
+#endif
 {
 	const uint m = 0x5bd1e995U;
 	uint hash = seed;
@@ -167,8 +171,15 @@ uint murmurHash(uint2 x, uint seed)
 
 float2 whiteNoise2D(float2 pos, uint seed)
 {
+#ifdef OPENGL
 	return float2(
-    float(murmurHash(uint2(uint(pos.x), uint(pos.y)), seed)) / float(0xffffffffU),
-    float(murmurHash(uint2(uint(pos.x + 10000), uint(pos.y + 10000)), seed)) / float(0xffffffffU)
-  );
+    	float(murmurHash(uvec2(uint(pos.x), uint(pos.y)), seed)) / float(0xffffffffU),
+    	float(murmurHash(uvec2(uint(pos.x + 10000), uint(pos.y + 10000)), seed)) / float(0xffffffffU)
+	);
+#else
+	return float2(
+    	float(murmurHash(uint2(uint(pos.x), uint(pos.y)), seed)) / float(0xffffffffU),
+    	float(murmurHash(uint2(uint(pos.x + 10000), uint(pos.y + 10000)), seed)) / float(0xffffffffU)
+	);
+#endif
 }

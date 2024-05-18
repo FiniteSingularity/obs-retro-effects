@@ -15,7 +15,7 @@ void bloom_f_create(retro_effects_filter_data_t *filter)
 
 void bloom_f_destroy(retro_effects_filter_data_t *filter)
 {
-	bloom_f_filter_data_t *data = filter->active_filter_data;
+	//bloom_f_filter_data_t *data = filter->active_filter_data;
 	obs_enter_graphics();
 
 	obs_leave_graphics();

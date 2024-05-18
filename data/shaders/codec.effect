@@ -109,6 +109,15 @@ float2 mod(float2 x, float2 y)
 
 float get_bayer(float2 px)
 {
+	
+#ifdef OPENGL
+	const int bayer4[16] = int[16](
+		0, 8, 2, 10,
+		12, 4, 14, 6,
+		3, 11, 1, 9,
+		15, 7, 13, 5
+	);
+#else
 	int bayer4[16] =
 	{
 		0, 8, 2, 10,
@@ -116,6 +125,7 @@ float get_bayer(float2 px)
 		3, 11, 1, 9,
 		15, 7, 13, 5
 	};
+#endif
 	float2 sample_coord = mod(px, float2(4.0, 4.0));
 	return float(bayer4[int(sample_coord.y) * 4 + int(sample_coord.x)]) / 16.0;
 }
@@ -168,13 +178,12 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 	// For the other two channels, use a least squares regression.
 
 	// Find min/max per channel
-	float3 minCol = { 1, 1, 1 };
-	float3 maxCol = { 0, 0, 0 };
+	float3 minCol = float3(1.0, 1.0, 1.0);
+	float3 maxCol = float3(0.0, 0.0, 0.0);
 
-	float3 sum = { 0, 0, 0 }; // r, g, b
-	float3 sumSq = { 0, 0, 0 }; // rr, gg, bb
-	float3 sumProd = { 0, 0, 0 }; // bg, gr, rb (index by (max+cur)%3)
-
+	float3 sum = float3(0.0, 0.0, 0.0); // r, g, b
+	float3 sumSq = float3(0.0, 0.0, 0.0); // rr, gg, bb
+	float3 sumProd = float3(0.0, 0.0, 0.0); // bg, gr, rb (index by (max+cur)%3)
 	for (int bx = 0; bx < 4; ++bx)
 	{
 		for (int by = 0; by < 4; ++by)
@@ -202,13 +211,13 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 		}
 	}
 
-	float3 maxChanMask = (int3(0, 1, 2) == maxChanIdx) ? 1.0f : 0.0f;
+	float3 maxChanMask = (int3(0, 1, 2) == maxChanIdx) ? float3(1.0, 1.0, 1.0) : float3(0.0, 0.0, 0.0);
 
 	sumProd = rotateCol(sumProd, maxChanIdx);
 
 	// Find slope per channel vs max channel
-	float3 m = { 1, 1, 1 };
-	float3 b = { 0, 0, 0 };
+	float3 m = float3(1.0, 1.0, 1.0);
+	float3 b = float3(0.0, 0.0, 0.0);
 
 	float d = 16.0f * sumSq[maxChanIdx] - sum[maxChanIdx] * sum[maxChanIdx];
 
@@ -225,9 +234,13 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 		float sumMax = sum[maxChanIdx];
 		m = (16.0f * sumProd - sumMax * sum) / d;
 		b = (sum - m * sumMax) / 16.0f;
-
+#ifdef OPENGL
+		startCol = maxChanMask * minCol + (1.0 - maxChanMask) * (m * minCol[maxChanIdx] + b);
+		endCol = maxChanMask * minCol + (1.0 - maxChanMask) * (m * maxCol[maxChanIdx] + b);
+#else
 		startCol = maxChanMask ? minCol : m * minCol[maxChanIdx] + b;
 		endCol = maxChanMask ? maxCol : m * maxCol[maxChanIdx] + b;
+#endif
 	}
 
 	startCol = saturate(startCol);
@@ -236,29 +249,29 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 
 float4 rpzaEncode(float2 sourcePx)
 {
-	int2 coordInBlock = (int2) floor(sourcePx % 4);
-	int2 blockCoord = (int2) floor(sourcePx / 4);
+	int2 coordInBlock = int2(floor(mod(sourcePx, float2(4.0, 4.0))));
+	int2 blockCoord = int2(floor(sourcePx / 4.0));
 
 	// NOTE: error calcs not going to be as accurate as they could be because they're not taking the quantization into account
 
 	// Compute the gradient by least squares
-	float3 mean = float3(0, 0, 0);
-	float3 startCol = float3(0, 0, 0);
-	float3 endCol = float3(1, 1, 1);
+	float3 mean = float3(0.0, 0.0, 0.0);
+	float3 startCol = float3(0.0, 0.0, 0.0);
+	float3 endCol = float3(1.0, 1.0, 1.0);
 	calcGradient(blockCoord, mean, startCol, endCol);
 
-	mean = quantize(mean, 0);
-	startCol = quantize(startCol, 0);
-	endCol = quantize(endCol, 0);
+	mean = quantize(mean, 0.0);
+	startCol = quantize(startCol, 0.0);
+	endCol = quantize(endCol, 0.0);
 
 	// Compute 4-col gradient
 	float3 gradCol[4];
                 
 	for (int i = 0; i < 4; ++i)
 	{
-		float3 p = lerp(startCol, endCol, i / 3.0);
+		float3 p = lerp(startCol, endCol, float(i) / 3.0);
 		// convert to rgb555
-		gradCol[i] = quantize(p, 0);
+		gradCol[i] = quantize(p, 0.0);
 	}
 
 	// Iterate pixels and compute total square error then sqrt mean square error
@@ -280,7 +293,7 @@ float4 rpzaEncode(float2 sourcePx)
 
 			// Find closest color in gradient
 			float minErr = 9999999.0;
-			float3 minErrCol = { 1, 1, 1 };
+			float3 minErrCol = float3(1.0, 1.0, 1.0);
 			for (int i = 0; i < 4; ++i)
 			{
 				float3 p = gradCol[i];
@@ -320,7 +333,7 @@ float4 rpzaEncode(float2 sourcePx)
 	{
 		// Find closest color in gradient
 		float minErr = 9999999.0;
-		float3 minErrCol = { 1, 1, 1 };
+		float3 minErrCol = float3(1.0, 1.0, 1.0);
 		for (int i = 0; i < 4; ++i)
 		{
 			float3 p = gradCol[i];

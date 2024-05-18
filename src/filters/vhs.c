@@ -107,6 +107,7 @@ void vhs_filter_defaults(obs_data_t *settings)
 void vhs_filter_properties(retro_effects_filter_data_t *data,
 			   obs_properties_t *props)
 {
+	UNUSED_PARAMETER(data);
 	// vhs Type
 	//obs_data_t *settings = obs_source_get_settings(data->base->context);
 	obs_property_t *p;
@@ -340,7 +341,9 @@ void vhs_filter_video_tick(retro_effects_filter_data_t *data,
 	if (filter->jitter) {
 		const float step = filter->jitter_step * seconds *
 			filter->jitter_size / filter->jitter_period;
-		filter->current_jitter = min(filter->current_jitter + step, filter->jitter_size);
+		const float inc = filter->current_jitter + step;
+		filter->current_jitter = inc < filter->jitter_size ? inc : filter->jitter_size;
+		//filter->current_jitter = min(filter->current_jitter + step, filter->jitter_size);
 		if (filter->current_jitter >= filter->jitter_size && filter->current_jitter > 0.001f) {
 			filter->jitter_step = -1.0;
 		} else if (filter->current_jitter < 0.001f) {
@@ -381,7 +384,6 @@ void vhs_filter_video_tick(retro_effects_filter_data_t *data,
 	} else {
 		double r = (double)rand() / (double)RAND_MAX;
 		float occurrence = filter->tape_wrinkle_occurrence / 100.0f;
-		float increment = 1.0f / seconds;
 		float p = occurrence * seconds;
 		if ((float)r < p) {
 			filter->wrinkle_position = 1.2f;
@@ -412,6 +414,10 @@ static void vhs_load_effect(vhs_filter_data_t *filter)
 	dstr_init_copy(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
+	int device_type = gs_get_device_type();
+	if (device_type == GS_DEVICE_OPENGL) {
+		dstr_insert(&shader_dstr, 0, "#define OPENGL 1\n");
+	}
 	filter->effect_vhs = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
 

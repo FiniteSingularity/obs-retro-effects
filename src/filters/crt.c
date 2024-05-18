@@ -366,10 +366,15 @@ static void crt_load_effect(crt_filter_data_t *filter)
 
 	struct dstr shader_dstr = {0};
 	dstr_init(&shader_dstr);
+
 	dstr_printf(&shader_dstr, "#define PHOSPHOR_LAYOUT_%i\n", filter->phosphor_type);
 	dstr_cat(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
+	int device_type = gs_get_device_type();
+	if (device_type == GS_DEVICE_OPENGL) {
+		dstr_insert(&shader_dstr, 0, "#define OPENGL 1\n");
+	}
 	filter->effect_crt = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
 

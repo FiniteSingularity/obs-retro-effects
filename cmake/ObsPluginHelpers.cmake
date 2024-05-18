@@ -184,6 +184,7 @@ if(OS_POSIX)
       -Wno-unused-function
       -Wno-missing-field-initializers
       -fno-strict-aliasing
+      -Wno-unused-command-line-argument
       "$<$<COMPILE_LANGUAGE:C>:-Werror-implicit-function-declaration;-Wno-missing-braces>"
       "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wnull-conversion;-Wno-error=shorten-64-to-32;-fcolor-diagnostics>"
       "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang>:-Wnull-conversion;-Wno-error=shorten-64-to-32;-fcolor-diagnostics>"

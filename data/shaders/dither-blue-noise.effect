@@ -128,7 +128,11 @@ float2 pxFromUv(float2 uv)
 #ifdef USE_BAYER2
 float get_bayer(float2 px)
 {
-	int bayer2[4] = { 0, 2, 3, 1 };
+#ifdef OPENGL
+	const int bayer2[4] = int[4](0, 2, 3, 1);
+#else
+	const int bayer2[4] = { 0, 2, 3, 1 };
+#endif
 	float2 sample_coord = mod(px, float2(2.0, 2.0));
 	return float(bayer2[int(sample_coord.y) * 2 + int(sample_coord.x)]) / 4.0;
 }
@@ -137,6 +141,14 @@ float get_bayer(float2 px)
 #ifdef USE_BAYER4
 float get_bayer(float2 px)
 {
+#ifdef OPENGL
+	const int bayer4[16] = int[16](
+		0, 8, 2, 10,
+		12, 4, 14, 6,
+		3, 11, 1, 9,
+		15, 7, 13, 5
+	);
+#else
 	int bayer4[16] =
 	{
 		0, 8, 2, 10,
@@ -144,6 +156,7 @@ float get_bayer(float2 px)
 		3, 11, 1, 9,
 		15, 7, 13, 5
 	};
+#endif
 	float2 sample_coord = mod(px, float2(4.0, 4.0));
 	return float(bayer4[int(sample_coord.y) * 4 + int(sample_coord.x)]) / 16.0;
 }
@@ -152,6 +165,18 @@ float get_bayer(float2 px)
 #ifdef USE_BAYER8
 float get_bayer(float2 px)
 {
+#ifdef OPENGL
+	const int bayer8[64] = int[64](
+		0, 32, 8, 40, 2, 34, 10, 42,
+		48, 16, 56, 24, 50, 18, 58, 26,
+		12, 44, 4, 36, 14, 46, 6, 38,
+		60, 28, 52, 20, 62, 30, 54, 22,
+		 3, 35, 11, 43, 1, 33, 9, 41,
+		51, 19, 59, 27, 49, 17, 57, 25,
+		15, 47, 7, 39, 13, 45, 5, 37,
+		63, 31, 55, 23, 61, 29, 53, 21
+	);
+#else
 	int bayer8[64] =
 	{
 		0, 32, 8, 40, 2, 34, 10, 42,
@@ -163,6 +188,7 @@ float get_bayer(float2 px)
 		15, 47, 7, 39, 13, 45, 5, 37,
 		63, 31, 55, 23, 61, 29, 53, 21
 	};
+#endif
 	float2 sample_coord = mod(px, float2(8.0, 8.0));
 	return (float(bayer8[int(sample_coord.y) * 8 + int(sample_coord.x)]) / 64.0);
 }
@@ -181,7 +207,7 @@ float4 sampleSource(float2 uv)
 	float contrastFactor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
 
 	// Correct color
-	color.rgb = pow(color.rgb, gammaCorrection);
+	color.rgb = pow(color.rgb, float3(gammaCorrection, gammaCorrection, gammaCorrection));
 	color.rgb = saturate(contrastFactor * (color.rgb - 0.5) + 0.5);
 
 	return color;
@@ -190,7 +216,8 @@ float4 sampleSource(float2 uv)
 float4 sampleSourceMono(float2 uv)
 {
 	float4 color = sampleSource(uv);
-	return float4(RGBToLum(color.rgb).xxx, color.a);
+	float lum = RGBToLum(color.rgb);
+	return float4(lum, lum, lum, color.a);
 }
 
 float3 quantise(float3 color, float dither)
