@@ -211,7 +211,11 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 		}
 	}
 
-	float3 maxChanMask = (int3(0, 1, 2) == maxChanIdx) ? float3(1.0, 1.0, 1.0) : float3(0.0, 0.0, 0.0);
+#ifdef OPENGL
+	bvec3 maxChanMask = equal(int3(0, 1, 2), int3(maxChanIdx));
+#else
+	float3 maxChanMask = (int3(0, 1, 2) == maxChanIdx);
+#endif
 
 	sumProd = rotateCol(sumProd, maxChanIdx);
 
@@ -235,8 +239,8 @@ void calcGradient(int2 blockCoord, out float3 mean, out float3 startCol, out flo
 		m = (16.0f * sumProd - sumMax * sum) / d;
 		b = (sum - m * sumMax) / 16.0f;
 #ifdef OPENGL
-		startCol = maxChanMask * minCol + (1.0 - maxChanMask) * (m * minCol[maxChanIdx] + b);
-		endCol = maxChanMask * minCol + (1.0 - maxChanMask) * (m * maxCol[maxChanIdx] + b);
+		startCol = mix(m * minCol[maxChanIdx] + b, minCol, maxChanMask);
+		endCol = mix(m * maxCol[maxChanIdx] + b, maxCol, maxChanMask);
 #else
 		startCol = maxChanMask ? minCol : m * minCol[maxChanIdx] + b;
 		endCol = maxChanMask ? maxCol : m * maxCol[maxChanIdx] + b;
