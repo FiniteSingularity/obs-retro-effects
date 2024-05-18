@@ -414,6 +414,10 @@ static void vhs_load_effect(vhs_filter_data_t *filter)
 	dstr_init_copy(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
+	int device_type = gs_get_device_type();
+	if (device_type == GS_DEVICE_OPENGL) {
+		dstr_insert(&shader_dstr, 0, "#define OPENGL 1\n");
+	}
 	filter->effect_vhs = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
 
