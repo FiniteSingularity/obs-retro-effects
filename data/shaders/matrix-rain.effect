@@ -65,7 +65,7 @@ float4 mainImage(VertData v_in) : TARGET
 	float noise_shift_u = floor(noise_shift / char_width / scale) * char_width * scale / uv_size.x;
 	float2 sub_pos = float2(frac(coord.x / scale / char_width), frac(coord.y / scale / char_height));
 
-	float2 noise = whiteNoise2D((uv - float2(noise_shift_u, 0.0)) * float2(uv_size.x, 1), 12345);
+	float2 noise = whiteNoise2D((uv - float2(noise_shift_u, 0.0)) * float2(uv_size.x, 1), 12345U);
 	//float2 noise = hash32(float3(uv - float2(noise_shift_u, 0.0) * float2(uv_size.x, 1), 0.0));
 	
 	float rain_speed = (1.0 + noise.x * 7.0);

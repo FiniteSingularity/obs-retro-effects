@@ -260,8 +260,11 @@ static void dither_load_effect(dither_filter_data_t *filter)
 	dstr_cat(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
-	filter->effect_dither =
-		gs_effect_create(shader_dstr.array, NULL, &errors);
+	int device_type = gs_get_device_type();
+	if (device_type == GS_DEVICE_OPENGL) {
+		dstr_insert(&shader_dstr, 0, "#define OPENGL 1\n");
+	}
+	filter->effect_dither = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
 
 	dstr_free(&shader_dstr);

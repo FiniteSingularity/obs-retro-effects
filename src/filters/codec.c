@@ -364,10 +364,15 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	shader_text = load_shader_from_file(filename.array);
 	char *errors = NULL;
 	dstr_free(&filename);
+	struct dstr shader_dstr = {0};
+	dstr_init_copy(&shader_dstr, shader_text);
 
 	obs_enter_graphics();
-	filter->effect_codec =
-		gs_effect_create(shader_text, NULL, &errors);
+	int device_type = gs_get_device_type();
+	if (device_type == GS_DEVICE_OPENGL) {
+		dstr_insert(&shader_dstr, 0, "#define OPENGL 1\n");
+	}
+	filter->effect_codec = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
 
 	bfree(shader_text);

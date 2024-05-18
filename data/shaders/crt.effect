@@ -7,7 +7,8 @@ uniform int phosphor_layout;
 uniform float vignette_intensity;
 uniform float corner_radius;
 
-// Mask weights are from 
+// Mask weights are from https://github.com/libretro/slang-shaders/blob/master/include/subpixel_masks.h
+// Originally created by hunterk, and released as public domain
 float3 mask_weights(float2 coord)
 {
 	float3 weights = float3(1., 1., 1.);
