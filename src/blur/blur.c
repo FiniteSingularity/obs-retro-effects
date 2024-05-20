@@ -76,7 +76,7 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 
 	// 1. First pass- apply 1D blur kernel to horizontal dir.
 	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
-	gs_effect_set_texture(image, texture);
+	gs_effect_set_texture_srgb(image, texture);
 
 	switch (data->device_type) {
 	case GS_DEVICE_DIRECT3D_11:
@@ -110,6 +110,9 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 		gs_effect_set_vec2(data->param_texel_step, &texel_step);
 	}
 
+	const bool previous_framebuffer_srgb = gs_framebuffer_srgb_enabled();
+	gs_enable_framebuffer_srgb(true);
+
 	set_blending_parameters();
 
 	if (gs_texrender_begin(data->blur_buffer_1, width, height)) {
@@ -125,7 +128,7 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 
 	// 3. Second Pass- Apply 1D blur kernel vertically.
 	image = gs_effect_get_param_by_name(effect, "image");
-	gs_effect_set_texture(image, texture2);
+	gs_effect_set_texture_srgb(image, texture2);
 
 	if (data->device_type == GS_DEVICE_OPENGL &&
 	    data->param_kernel_texture) {
@@ -150,6 +153,8 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 	}
 
 	gs_blend_state_pop();
+
+	gs_enable_framebuffer_srgb(previous_framebuffer_srgb);
 }
 
 /*
