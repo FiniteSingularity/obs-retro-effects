@@ -1,0 +1,71 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform texture2d vert_grid;
+uniform texture2d horiz_grid;
+uniform texture2d rgb_drift_grid;
+uniform float2 uv_size;
+uniform float time;
+uniform float max_disp;
+uniform float max_rgb_drift;
+uniform float amount;
+
+#include "noise-functions.effect"
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+float digitalNoise(float2 loc)
+{
+	// Get a noise value in [-1, 1]
+	float n1 = 2.0 * vert_grid.Sample(textureSampler, float2(0.0, loc.y)).r - 1.0;
+	float n2 = 2.0 * horiz_grid.Sample(textureSampler, float2(loc.x, 0.0)).r -1.0;
+	n1 = abs(n1) > amount ? 0.0 : n1;
+	n2 = abs(n2) > amount ? 0.0 : n2;
+	return n1 * n2;
+}
+
+float rgb_drift(float2 loc)
+{
+	float n = 2.0 * rgb_drift_grid.Sample(textureSampler, float2(0.0, loc.y)).r - 1.0;
+	return abs(n) > amount ? 0.0 : n;
+
+}
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+	//float amount = 0.2 + 0.3 * pow(sin(time * 1.2), 5.0);
+	float block_disp = digitalNoise(v_in.uv) * max_disp;
+	float rgb_disp = rgb_drift(v_in.uv) * max_rgb_drift;
+	float4 col_r = image.Sample(textureSampler, float2(coord.x + block_disp + rgb_disp, coord.y) / uv_size);
+	float4 col_g = image.Sample(textureSampler, float2(coord.x + block_disp, coord.y)/uv_size);
+	float4 col_b = image.Sample(textureSampler, float2(coord.x + block_disp - rgb_disp, coord.y) / uv_size);
+	float alpha = 0.334 * col_r.a + 0.333 * col_g.a + 0.333 * col_b.a;
+	return float4(col_r.r, col_g.g, col_b.b, alpha);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
