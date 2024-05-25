@@ -109,77 +109,91 @@ void digital_glitch_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.DigitalGlitch.Amount"), 0.0, 100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
-	p = obs_properties_add_float_slider(
-		props, "digital_glitch_max_disp",
-		obs_module_text("RetroEffects.DigitalGlitch.MaxDisplacement"), 0.0,
-		4000.0, 1.0);
-	obs_property_float_set_suffix(p, "px");
-
-	p = obs_properties_add_int_slider(
-		props, "digital_glitch_min_block_width",
-		obs_module_text("RetroEffects.DigitalGlitch.MinBlockWidth"),
-		0, 4000, 1);
-	obs_property_float_set_suffix(p, "px");
-
-	p = obs_properties_add_int_slider(
-		props, "digital_glitch_max_block_width",
-		obs_module_text("RetroEffects.DigitalGlitch.MaxBlockWidth"),
-		0, 4000, 1);
-	obs_property_float_set_suffix(p, "px");
-
-	p = obs_properties_add_int_slider(
-		props, "digital_glitch_min_block_height",
-		obs_module_text("RetroEffects.DigitalGlitch.MinBlockHeight"),
-		0, 4000, 1);
-	obs_property_float_set_suffix(p, "px");
-
-	p = obs_properties_add_int_slider(
-		props, "digital_glitch_max_block_height",
-		obs_module_text("RetroEffects.DigitalGlitch.MaxBlockHeight"),
-		0, 4000, 1);
-	obs_property_float_set_suffix(p, "px");
+	obs_properties_t *displacement_group = obs_properties_create();
 
 	p = obs_properties_add_float_slider(
-		props, "digital_glitch_min_block_interval",
-		obs_module_text("RetroEffects.DigitalGlitch.MinBlockInterval"), 0.0,
-		4.0, 0.01);
+		displacement_group, "digital_glitch_max_disp",
+		obs_module_text("RetroEffects.DigitalGlitch.MaxDisplacement"),
+		0.0, 8000.0, 1.0);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_int_slider(
+		displacement_group, "digital_glitch_min_block_width",
+		obs_module_text("RetroEffects.DigitalGlitch.MinBlockWidth"), 0,
+		4000, 1);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_int_slider(
+		displacement_group, "digital_glitch_max_block_width",
+		obs_module_text("RetroEffects.DigitalGlitch.MaxBlockWidth"), 0,
+		4000, 1);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_int_slider(
+		displacement_group, "digital_glitch_min_block_height",
+		obs_module_text("RetroEffects.DigitalGlitch.MinBlockHeight"), 0,
+		4000, 1);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_int_slider(
+		displacement_group, "digital_glitch_max_block_height",
+		obs_module_text("RetroEffects.DigitalGlitch.MaxBlockHeight"), 0,
+		4000, 1);
+	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_float_slider(
+		displacement_group, "digital_glitch_min_block_interval",
+		obs_module_text("RetroEffects.DigitalGlitch.MinBlockInterval"),
+		0.0, 4.0, 0.01);
 	obs_property_float_set_suffix(p, " s");
 
 	p = obs_properties_add_float_slider(
-		props, "digital_glitch_max_block_interval",
+		displacement_group, "digital_glitch_max_block_interval",
 		obs_module_text("RetroEffects.DigitalGlitch.MaxBlockInterval"), 0.0,
 		4.0, 0.01);
 	obs_property_float_set_suffix(p, " s");
 
+	obs_properties_add_group(
+		props, "digital_glitch_displacement",
+		obs_module_text("RetroEffects.DigitalGlitch.Displacement"),
+		OBS_GROUP_NORMAL, displacement_group);
+
+	obs_properties_t *rgb_drift_group = obs_properties_create();
+
 	p = obs_properties_add_float_slider(
-		props, "digital_glitch_max_rgb_drift",
-		obs_module_text("RetroEffects.DigitalGlitch.MaxRGBDrift"),
-		0.0, 4000.0, 1.0);
+		rgb_drift_group, "digital_glitch_max_rgb_drift",
+		obs_module_text("RetroEffects.DigitalGlitch.MaxRGBDrift"), 0.0,
+		8000.0, 1.0);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_int_slider(
-		props, "digital_glitch_min_rgb_height",
+		rgb_drift_group, "digital_glitch_min_rgb_height",
 		obs_module_text("RetroEffects.DigitalGlitch.MinRGBHeight"), 0,
 		4000, 1);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_int_slider(
-		props, "digital_glitch_max_rgb_height",
+		rgb_drift_group, "digital_glitch_max_rgb_height",
 		obs_module_text("RetroEffects.DigitalGlitch.MaxRGBHeight"), 0,
 		4000, 1);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_float_slider(
-		props, "digital_glitch_min_rgb_interval",
+		rgb_drift_group, "digital_glitch_min_rgb_interval",
 		obs_module_text("RetroEffects.DigitalGlitch.MinRGBInterval"),
 		0.0, 4.0, 0.01);
 	obs_property_float_set_suffix(p, " s");
 
 	p = obs_properties_add_float_slider(
-		props, "digital_glitch_max_rgb_interval",
+		rgb_drift_group, "digital_glitch_max_rgb_interval",
 		obs_module_text("RetroEffects.DigitalGlitch.MaxRGBInterval"),
 		0.0, 4.0, 0.01);
 	obs_property_float_set_suffix(p, " s");
+
+	obs_properties_add_group(
+		props, "digital_glitch_rgb_drift",
+		obs_module_text("RetroEffects.DigitalGlitch.RGBDrift"),
+		OBS_GROUP_NORMAL, rgb_drift_group);
 
 }
 
