@@ -315,7 +315,7 @@ void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 			uint32_t h_size =
 				(uint32_t)floor(r * range) + min_h_band_size;
 			size_t end = i + h_size;
-			for (i; i < end; i++) {
+			for (; i < end; i++) {
 				if (i == filter->horiz_grid.capacity) {
 					break;
 				}
@@ -331,7 +331,7 @@ void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 			uint32_t v_size =
 				(uint32_t)floor(r * range) + min_v_band_size;
 			size_t end = i + v_size;
-			for (i; i < end; i++) {
+			for (; i < end; i++) {
 				if (i == filter->vert_grid.capacity) {
 					break;
 				}
@@ -378,7 +378,7 @@ void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 			float range = (float)(filter->max_rgb_drift_height - filter->min_rgb_drift_height + 1);
 			uint32_t v_size = (uint32_t)floor(r * range) + filter->min_rgb_drift_height;
 			size_t end = i + v_size;
-			for (i; i < end; i++) {
+			for (; i < end; i++) {
 				if (i == filter->rgb_drift_grid.capacity) {
 					break;
 				}
