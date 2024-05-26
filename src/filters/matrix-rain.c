@@ -20,7 +20,7 @@ void matrix_rain_create(retro_effects_filter_data_t *filter)
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	matrix_rain_filter_defaults(settings);
 	obs_data_release(settings);
-	matrix_rain_load_effect(data);
+	data->reload_effect = true;
 }
 
 void matrix_rain_destroy(retro_effects_filter_data_t *filter)
@@ -113,9 +113,8 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 	data->bloom_data->bloom_intensity =
 		(float)obs_data_get_double(settings, "matrix_bloom_intensity");
 
-	const float bloom_radius =
+	data->bloom_data->bloom_size =
 		(float)obs_data_get_double(settings, "matrix_bloom_radius");
-	set_gaussian_radius(bloom_radius, data->blur_data);
 
 	data->bloom_data->brightness_threshold =
 		(float)obs_data_get_double(settings, "matrix_bloom_threshold");
