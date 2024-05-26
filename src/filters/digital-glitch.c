@@ -292,6 +292,9 @@ void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 {
 	digital_glitch_filter_data_t *filter = data->active_filter_data;
 	filter->local_time += seconds;
+	if (data->base->width == 0u || data->base->height == 0u) {
+		return;
+	}
 	uint32_t min_h_band_size = filter->min_block_width;
 	uint32_t max_h_band_size = filter->max_block_width;
 	uint32_t min_v_band_size = filter->min_block_height;
