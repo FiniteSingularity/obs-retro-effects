@@ -67,7 +67,7 @@ void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 	filter->phosphor_size.y =
 		(float)obs_data_get_double(settings, "crt_phosphor_height")/9.0f;
 	filter->brightness =
-		0.3f * (1.0f - (float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f);
+		(float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f;
 
 	float bloom = (float)obs_data_get_double(settings, "crt_bloom") *
 		      30.0f / 100.0f;
