@@ -40,7 +40,11 @@ float4 mainImage(VertData v_in) : TARGET
 {
     // DO THE BLUR
     // 1. Sample incoming pixel, multiply by weight[0]
-    float4 col = image.Sample(textureSampler, v_in.uv) * weightLookup(0);
+    float4 sample0 = image.Sample(textureSampler, v_in.uv);
+    // Convert to premul alpha
+    sample0.rgb *= sample0.a;
+    // Now it's cool to multiply and add col
+    float4 col = sample0 * weightLookup(0);
     float total_weight = weightLookup(0);
 
     // 2. March out from incoming pixel, multiply by corresponding weight.
@@ -48,10 +52,16 @@ float4 mainImage(VertData v_in) : TARGET
         float weight = weightLookup(i);
         float offset = offsetLookup(i);
         total_weight += 2.0*weight;
-        col += image.Sample(textureSampler, v_in.uv + (offset * texel_step)) * weight;
-        col += image.Sample(textureSampler, v_in.uv - (offset * texel_step)) * weight;
+        float4 sampleL = image.Sample(textureSampler, v_in.uv + (offset * texel_step));
+        sampleL.rgb *= sampleL.a;
+        float4 sampleR = image.Sample(textureSampler, v_in.uv - (offset * texel_step));
+        sampleR.rgb *= sampleR.a;
+        col += sampleL * weight;
+        col += sampleR * weight;
     }
     col /= total_weight;
+    // Safely convert back to straight alpha
+    col.rgb = saturate(col.rgb / max(col.a, 0.0001f));
     return col;
 }
 
