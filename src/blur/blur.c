@@ -118,7 +118,6 @@ static void gaussian_area_blur_premul(gs_texture_t *src, gs_texrender_t *dest, b
 static void gaussian_area_blur_h(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data)
 {
 	uint32_t width = gs_texture_get_width(src);
-	uint32_t height = gs_texture_get_height(src);
 
 	struct vec2 texel_step;
 	texel_step.x = 1.0f / (float)width;
@@ -132,7 +131,6 @@ static void gaussian_area_blur_h(gs_texture_t *src, gs_texrender_t *dest, blur_d
 
 static void gaussian_area_blur_v(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data)
 {
-	uint32_t width = gs_texture_get_width(src);
 	uint32_t height = gs_texture_get_height(src);
 
 	struct vec2 texel_step;
