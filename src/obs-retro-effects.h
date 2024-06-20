@@ -35,6 +35,8 @@
 #define RETRO_FILTER_SCANLINES_LABEL "RetroEffects.Scanlines"
 #define RETRO_FILTER_DIGITAL_GLITCH 14
 #define RETRO_FILTER_DIGITAL_GLITCH_LABEL "RetroEffects.DigitalGlitch"
+#define RETRO_FILTER_ANALOG_GLITCH 15
+#define RETRO_FILTER_ANALOG_GLITCH_LABEL "RetroEffects.AnalogGlitch"
 
 struct retro_effects_filter_data;
 typedef struct retro_effects_filter_data retro_effects_filter_data_t;

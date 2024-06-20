@@ -1,5 +1,6 @@
 #include "obs-retro-effects-filter.h"
 #include "obs-retro-effects.h"
+#include "filters/analog-glitch.h"
 #include "filters/frame-skip.h"
 #include "filters/interlace.h"
 #include "filters/chromatic-aberration.h"
@@ -199,6 +200,9 @@ static obs_properties_t *retro_effects_filter_properties(void *data)
 	obs_property_list_add_int(filter_list,
 				  obs_module_text(RETRO_FILTER_DIGITAL_GLITCH_LABEL),
 				  RETRO_FILTER_DIGITAL_GLITCH);
+	obs_property_list_add_int(filter_list,
+				  obs_module_text(RETRO_FILTER_ANALOG_GLITCH_LABEL),
+				  RETRO_FILTER_ANALOG_GLITCH);
 
 	obs_property_set_modified_callback2(filter_list, filter_type_modified,
 					    data);
@@ -274,6 +278,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 		break;
 	case RETRO_FILTER_DIGITAL_GLITCH:
 		digital_glitch_create(filter);
+		break;
+	case RETRO_FILTER_ANALOG_GLITCH:
+		analog_glitch_create(filter);
 		break;
 	}
 }

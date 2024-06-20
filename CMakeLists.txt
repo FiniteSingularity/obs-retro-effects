@@ -34,6 +34,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/blur/blur.h
 	src/blur/gaussian-kernel.c
 	src/blur/gaussian-kernel.h
+	src/filters/analog-glitch.c
+	src/filters/analog-glitch.h
 	src/filters/bloom-f.c
 	src/filters/bloom-f.h
 	src/filters/cathode-boot.c
