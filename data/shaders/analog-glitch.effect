@@ -1,0 +1,104 @@
+// Based off of ShaderToy "Video Glitch" by dyvoid.
+// https://www.shadertoy.com/view/XtK3W3
+// Converted to HLSL, added user changable parameters,
+// And added CA effect by Finite Singularity.
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float time;
+
+uniform float speed_primary; //= 2.0;
+uniform float speed_secondary; // = 5.0;
+uniform float scale_primary; // = 800.0;
+uniform float scale_secondary; // = 128.0;
+
+uniform float threshold_primary; // = 0.3;
+uniform float threshold_secondary; // = 0.7;
+uniform float secondary_influence; // = 0.15;
+
+uniform float max_disp; // = 250.0;
+uniform float interference_mag; // = 0.3;
+uniform float line_mag; // = 0.15;
+uniform float interference_alpha;
+
+uniform float desaturation_amount;
+uniform float color_drift;
+
+#include "noise-functions.effect"
+
+sampler_state textureSampler{
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+    MinLOD = 0;
+    MaxLOD = 0;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData mainTransform(VertData v_in)
+{
+	v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	return v_in;
+}
+
+// Sample with desaturation
+float4 sampleDesaturatedTexture(float2 xy, float desat)
+{
+	// Desaturation Distortion
+	float4 col = image.Sample(textureSampler, xy / uv_size);
+	float lum = dot(col.rgb, float3(0.299, 0.587, 0.114));
+	col.rgb = lerp(col.rgb, float3(lum, lum, lum), float3(desat, desat, desat));
+	return col;
+}
+
+float4 mainImage(VertData v_in) : TARGET
+{
+	float2 coord = v_in.uv * uv_size;
+
+	float n_primary = open_simplex_1d(float2(time * speed_primary, coord.y), 0.0, float2(1.0, scale_primary));
+	float n_secondary = open_simplex_1d(float2(time * speed_secondary, coord.y), 0.0, float2(1.0, scale_secondary));
+
+	n_primary = max(0.0, (n_primary - threshold_primary)) / (1.0 - threshold_primary);
+	n_primary += n_secondary * secondary_influence;
+	n_primary /= (1.0 + secondary_influence);
+	
+	coord.x = coord.x - max_disp * n_primary * n_primary;
+
+	// CA Distortion and Desaturation
+	float desat = n_primary * desaturation_amount;
+	float4 col_g = sampleDesaturatedTexture(coord, desat);
+	float4 col_r = sampleDesaturatedTexture(coord - float2(n_primary * color_drift, 0.0), desat);
+	float4 col_b = sampleDesaturatedTexture(coord + float2(n_primary * color_drift, 0.0), desat);
+
+	float4 col = float4(col_r.r, col_g.g, col_b.b, (col_r.a + col_g.a + col_b.a)*0.33334);
+	
+	// Interference noise (lightening/darkening)
+	float n_interference = hash11(coord.y * time*5.0);
+	float inter = n_primary * interference_mag;
+	col.rgb = lerp(col.rgb, float3(n_interference, n_interference, n_interference), float3(inter, inter, inter));
+
+	// Static lines (correlated to primary displacement)
+	if (floor(fmod(coord.y * 0.25, 2.0)) < 0.001)
+	{
+		float intf = 1.0 - (line_mag * n_primary);
+		col.rgb *= intf;
+		col.a = col.a - (interference_alpha * (1.0 - intf));
+	}
+
+	return col;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainImage(v_in);
+	}
+}
