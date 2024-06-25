@@ -21,7 +21,7 @@
 struct obs_source_info obs_retro_effects_filter = {
 	.id = "obs_retro_effects_filter",
 	.type = OBS_SOURCE_TYPE_FILTER,
-	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW,
 	.get_name = retro_effects_filter_name,
 	.create = retro_effects_filter_create,
 	.destroy = retro_effects_filter_destroy,
