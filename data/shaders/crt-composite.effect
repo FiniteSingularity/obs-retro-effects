@@ -34,6 +34,13 @@ float4 mainImage(VertData v_in) : TARGET
 	float2 uv = v_in.uv * 2. - 1.;
 	float r_pixel_2 = uv.x * uv.x + uv.y * uv.y;
 	float barrel = r_pixel_2 * dist;
+
+	// Would cause a negative sqrt, outside the region of interest anyway
+	if (barrel >= 0.5)
+	{
+		return float4(0, 0, 0, 0);
+	}
+
 	uv = (barrel > EPS) ? 0.5 * ((uv / barrel * (1. - sqrt(1. - 2. * barrel))) + 1.) : v_in.uv;
 
 	// Anti-alias barrel distortion edges
