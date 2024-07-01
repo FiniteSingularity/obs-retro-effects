@@ -20,8 +20,13 @@ void bloom_f_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
 
+void bloom_f_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "bloom_intensity");
 	obs_data_unset_user_value(settings, "bloom_threshold");
 	obs_data_unset_user_value(settings, "bloom_size");
@@ -29,11 +34,7 @@ void bloom_f_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "bloom_red_level");
 	obs_data_unset_user_value(settings, "bloom_green_level");
 	obs_data_unset_user_value(settings, "bloom_blue_level");
-
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void bloom_f_filter_update(retro_effects_filter_data_t *data,
@@ -183,6 +184,7 @@ static void bloom_f_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = bloom_f_filter_defaults;
 	filter->filter_update = bloom_f_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = bloom_f_unset_settings;
 }
 
 static bool threshold_type_modified(void *data, obs_properties_t *props,

@@ -66,6 +66,9 @@ struct matrix_rain_filter_data {
 
 extern void matrix_rain_create(retro_effects_filter_data_t *filter);
 extern void matrix_rain_destroy(retro_effects_filter_data_t *filter);
+extern void matrix_rain_unset_settings(retro_effects_filter_data_t* filter);
+
+
 extern void matrix_rain_filter_video_tick(retro_effects_filter_data_t *data,
 				   float seconds);
 extern void matrix_rain_filter_video_render(retro_effects_filter_data_t *data);

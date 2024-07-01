@@ -35,6 +35,8 @@ struct bloom_f_filter_data {
 
 extern void bloom_f_create(retro_effects_filter_data_t *filter);
 extern void bloom_f_destroy(retro_effects_filter_data_t *filter);
+extern void bloom_f_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void bloom_f_filter_video_render(retro_effects_filter_data_t *data);
 extern void bloom_f_filter_properties(retro_effects_filter_data_t *data,
 				      obs_properties_t *props);

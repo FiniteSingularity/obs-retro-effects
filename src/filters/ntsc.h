@@ -46,6 +46,8 @@ struct ntsc_filter_data {
 
 extern void ntsc_create(retro_effects_filter_data_t *filter);
 extern void ntsc_destroy(retro_effects_filter_data_t *filter);
+extern void ntsc_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void ntsc_filter_video_tick(retro_effects_filter_data_t *data,
 				   float seconds);
 extern void ntsc_filter_video_render(retro_effects_filter_data_t *data);

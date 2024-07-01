@@ -55,6 +55,8 @@ struct codec_filter_data {
 
 extern void codec_create(retro_effects_filter_data_t *filter);
 extern void codec_destroy(retro_effects_filter_data_t *filter);
+extern void codec_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void codec_filter_video_tick(retro_effects_filter_data_t *data, float seconds);
 extern void codec_filter_video_render(retro_effects_filter_data_t *data);
 extern void codec_filter_properties(retro_effects_filter_data_t *data,

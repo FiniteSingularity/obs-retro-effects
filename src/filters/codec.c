@@ -32,7 +32,13 @@ void codec_destroy(retro_effects_filter_data_t *filter)
 	}
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void codec_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "codec_px_scale");
 	obs_data_unset_user_value(settings, "codec_colors_per_channel");
 	obs_data_unset_user_value(settings, "codec_quality");
@@ -42,9 +48,6 @@ void codec_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "codec_rpza_threshold_solid");
 	obs_data_unset_user_value(settings, "codec_rpza_threshold_gradient");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 float lerp(float x, float y, float a)
@@ -345,6 +348,7 @@ codec_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = codec_filter_defaults;
 	filter->filter_update = codec_filter_update;
 	filter->filter_video_tick = codec_filter_video_tick;
+	filter->filter_unset_settings = codec_unset_settings;
 }
 
 static void codec_load_effect(codec_filter_data_t *filter)
@@ -374,7 +378,7 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	}
 	filter->effect_codec = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
-
+	dstr_free(&shader_dstr);
 	bfree(shader_text);
 	if (filter->effect_codec == NULL) {
 		blog(LOG_WARNING,

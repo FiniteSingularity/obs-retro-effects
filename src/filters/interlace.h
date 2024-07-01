@@ -22,6 +22,8 @@ struct interlace_filter_data {
 
 extern void interlace_create(retro_effects_filter_data_t *filter);
 extern void interlace_destroy(retro_effects_filter_data_t *filter);
+extern void interlace_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void interlace_filter_video_render(retro_effects_filter_data_t *data);
 extern void interlace_filter_properties(retro_effects_filter_data_t *data,
 					 obs_properties_t *props);

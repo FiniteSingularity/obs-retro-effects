@@ -27,16 +27,19 @@ void posterize_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void posterize_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "posterize_levels");
 	obs_data_unset_user_value(settings, "posterize_technique");
 	obs_data_unset_user_value(settings, "posterize_map_source");
 	obs_data_unset_user_value(settings, "posterize_color_1");
 	obs_data_unset_user_value(settings, "posterize_color_2");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void posterize_filter_update(retro_effects_filter_data_t *data,
@@ -256,6 +259,7 @@ static void posterize_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = posterize_filter_defaults;
 	filter->filter_update = posterize_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = posterize_unset_settings;
 }
 
 static void posterize_load_effect(posterize_filter_data_t *filter)

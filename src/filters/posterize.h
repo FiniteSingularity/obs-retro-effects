@@ -31,6 +31,8 @@ struct posterize_filter_data {
 
 extern void posterize_create(retro_effects_filter_data_t *filter);
 extern void posterize_destroy(retro_effects_filter_data_t *filter);
+extern void posterize_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void posterize_filter_video_render(retro_effects_filter_data_t *data);
 extern void posterize_filter_properties(retro_effects_filter_data_t *data,
 					obs_properties_t *props);
