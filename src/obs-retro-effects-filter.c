@@ -88,6 +88,7 @@ static void retro_effects_filter_destroy(void *data)
 
 	filter->filter_destroy(filter);
 	blur_destroy(filter);
+	bloom_destroy(filter);
 
 	bfree(filter->base);
 	bfree(filter);

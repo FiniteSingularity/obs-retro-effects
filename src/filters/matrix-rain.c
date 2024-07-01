@@ -40,6 +40,10 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 		obs_data_release(data->textures_data);
 	}
 
+	if (data->matrix_rain_texrender) {
+		gs_texrender_destroy(data->matrix_rain_texrender);
+	}
+
 	obs_leave_graphics();
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
@@ -60,7 +64,6 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "matrix_bloom_intensity");
 	obs_data_unset_user_value(settings, "matrix_rain_texture");
 	obs_data_unset_user_value(settings, "matrix_rain_texture_chars");
-
 	obs_data_release(settings);
 
 	dstr_free(&data->custom_texture_file);
@@ -146,6 +149,8 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 			set_character_texture(filter, font_image_path.array,
 					      num_chars);
 			dstr_free(&font_image_path);
+			obs_data_array_release(data_array);
+			obs_data_release(texture_dat);
 		}
 	}
 
@@ -190,7 +195,6 @@ void set_character_texture(matrix_rain_filter_data_t *filter,
 
 void matrix_rain_filter_defaults(obs_data_t *settings)
 {
-	UNUSED_PARAMETER(settings);
 	obs_data_set_default_int(settings, "matrix_char_set", 1);
 	obs_data_set_default_double(settings, "matrix_rain_scale", 0.40);
 	obs_data_set_default_double(settings, "matrix_rain_noise_shift", 0.0);

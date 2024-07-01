@@ -39,6 +39,7 @@ void digital_glitch_destroy(retro_effects_filter_data_t *filter)
 
 	da_free(data->horiz_grid);
 	da_free(data->vert_grid);
+	da_free(data->rgb_drift_grid);
 
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "digital_glitch_amount");

@@ -374,7 +374,7 @@ static void codec_load_effect(codec_filter_data_t *filter)
 	}
 	filter->effect_codec = gs_effect_create(shader_dstr.array, NULL, &errors);
 	obs_leave_graphics();
-
+	dstr_free(&shader_dstr);
 	bfree(shader_text);
 	if (filter->effect_codec == NULL) {
 		blog(LOG_WARNING,
