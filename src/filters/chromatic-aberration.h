@@ -30,6 +30,8 @@ struct chromatic_aberration_filter_data {
 
 extern void chromatic_aberration_create(retro_effects_filter_data_t *filter);
 extern void chromatic_aberration_destroy(retro_effects_filter_data_t *filter);
+extern void chromatic_aberration_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void chromatic_aberration_filter_video_render(retro_effects_filter_data_t *data);
 extern void chromatic_aberration_filter_properties(retro_effects_filter_data_t *data,
 					obs_properties_t *props);

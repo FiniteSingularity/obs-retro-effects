@@ -46,6 +46,8 @@ struct crt_filter_data {
 
 extern void crt_create(retro_effects_filter_data_t *filter);
 extern void crt_destroy(retro_effects_filter_data_t *filter);
+extern void crt_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void crt_filter_video_render(retro_effects_filter_data_t *data);
 extern void crt_filter_properties(retro_effects_filter_data_t *data,
 				  obs_properties_t *props);

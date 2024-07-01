@@ -17,14 +17,20 @@ void cathode_boot_create(retro_effects_filter_data_t *filter)
 void cathode_boot_destroy(retro_effects_filter_data_t *filter)
 {
 	cathode_boot_filter_data_t *data = filter->active_filter_data;
+
 	obs_enter_graphics();
 	if (data->effect_cathode_boot) {
 		gs_effect_destroy(data->effect_cathode_boot);
 	}
-
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void cathode_boot_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "cathode_boot_progress");
 	obs_data_unset_user_value(settings, "cathode_boot_vert_thickness");
 	obs_data_unset_user_value(settings, "cathode_boot_vert_start");
@@ -36,9 +42,6 @@ void cathode_boot_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "cathode_boot_fade_end");
 	obs_data_unset_user_value(settings, "cathode_boot_glow_size");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void cathode_boot_filter_update(retro_effects_filter_data_t *data,
@@ -72,7 +75,6 @@ void cathode_boot_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "cathode_boot_vert_thickness", 1.0);
 	obs_data_set_default_double(settings, "cathode_boot_horiz_thickness", 1.0);
 	obs_data_set_default_double(settings, "cathode_boot_glow_size", 2.0);
-
 }
 
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
@@ -239,6 +241,7 @@ static void cathode_boot_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = cathode_boot_filter_defaults;
 	filter->filter_update = cathode_boot_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = cathode_boot_unset_settings;
 }
 
 static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)

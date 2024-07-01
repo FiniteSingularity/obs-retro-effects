@@ -23,7 +23,13 @@ void dither_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void dither_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "dither_size");
 	obs_data_unset_user_value(settings, "dither_type");
 	obs_data_unset_user_value(settings, "dither_bayer_size");
@@ -35,9 +41,6 @@ void dither_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "dither_offset_x");
 	obs_data_unset_user_value(settings, "dither_offset_y");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void dither_filter_update(retro_effects_filter_data_t *data,
@@ -228,6 +231,7 @@ dither_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = dither_filter_defaults;
 	filter->filter_update = dither_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = dither_unset_settings;
 }
 
 static void dither_load_effect(dither_filter_data_t *filter)

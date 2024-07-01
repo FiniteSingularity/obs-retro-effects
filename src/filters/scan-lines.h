@@ -35,6 +35,8 @@ struct scan_lines_filter_data {
 
 extern void scan_lines_create(retro_effects_filter_data_t *filter);
 extern void scan_lines_destroy(retro_effects_filter_data_t *filter);
+extern void scan_lines_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void scan_lines_filter_video_render(retro_effects_filter_data_t *data);
 extern void scan_lines_filter_properties(retro_effects_filter_data_t *data,
 					 obs_properties_t *props);

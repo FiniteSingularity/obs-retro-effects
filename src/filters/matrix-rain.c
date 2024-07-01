@@ -46,7 +46,15 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	dstr_free(&data->custom_texture_file);
+
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void matrix_rain_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "matrix_char_set");
 	obs_data_unset_user_value(settings, "matrix_rain_scale");
 	obs_data_unset_user_value(settings, "matrix_rain_noise_shift");
@@ -65,11 +73,6 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "matrix_rain_texture");
 	obs_data_unset_user_value(settings, "matrix_rain_texture_chars");
 	obs_data_release(settings);
-
-	dstr_free(&data->custom_texture_file);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void matrix_rain_filter_update(retro_effects_filter_data_t *data,
@@ -483,6 +486,7 @@ static void matrix_rain_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = matrix_rain_filter_defaults;
 	filter->filter_update = matrix_rain_filter_update;
 	filter->filter_video_tick = matrix_rain_filter_video_tick;
+	filter->filter_unset_settings = matrix_rain_unset_settings;
 }
 
 static void matrix_rain_load_effect(matrix_rain_filter_data_t *filter)

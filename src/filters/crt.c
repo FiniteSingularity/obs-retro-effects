@@ -15,9 +15,9 @@ void crt_create(retro_effects_filter_data_t *filter)
 	obs_data_release(settings);
 }
 
-void crt_destroy(retro_effects_filter_data_t *filter)
+void crt_destroy(retro_effects_filter_data_t* filter)
 {
-	crt_filter_data_t *data = filter->active_filter_data;
+	crt_filter_data_t* data = filter->active_filter_data;
 	obs_enter_graphics();
 	if (data->effect_crt) {
 		gs_effect_destroy(data->effect_crt);
@@ -30,7 +30,13 @@ void crt_destroy(retro_effects_filter_data_t *filter)
 	}
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void crt_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "crt_phosphor_type");
 	obs_data_unset_user_value(settings, "crt_mask_intensity");
 	obs_data_unset_user_value(settings, "crt_bloom");
@@ -41,9 +47,6 @@ void crt_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "crt_black_level");
 	obs_data_unset_user_value(settings, "crt_white_level");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
@@ -344,6 +347,7 @@ static void crt_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = crt_filter_defaults;
 	filter->filter_update = crt_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = crt_unset_settings;
 }
 
 static void crt_load_effect(crt_filter_data_t *filter)

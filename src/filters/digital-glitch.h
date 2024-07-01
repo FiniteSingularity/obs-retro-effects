@@ -51,8 +51,9 @@ struct digital_glitch_filter_data {
 
 extern void digital_glitch_create(retro_effects_filter_data_t *filter);
 extern void digital_glitch_destroy(retro_effects_filter_data_t *filter);
-extern void
-digital_glitch_filter_video_render(retro_effects_filter_data_t *data);
+extern void digital_glitch_unset_settings(retro_effects_filter_data_t* filter);
+
+extern void digital_glitch_filter_video_render(retro_effects_filter_data_t *data);
 extern void digital_glitch_filter_properties(retro_effects_filter_data_t *data,
 					     obs_properties_t *props);
 extern void digital_glitch_filter_defaults(obs_data_t *settings);

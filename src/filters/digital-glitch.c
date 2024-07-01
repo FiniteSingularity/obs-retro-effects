@@ -41,7 +41,13 @@ void digital_glitch_destroy(retro_effects_filter_data_t *filter)
 	da_free(data->vert_grid);
 	da_free(data->rgb_drift_grid);
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void digital_glitch_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "digital_glitch_amount");
 	obs_data_unset_user_value(settings, "digital_glitch_max_disp");
 	obs_data_unset_user_value(settings, "digital_glitch_min_block_width");
@@ -53,9 +59,6 @@ void digital_glitch_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "digital_glitch_min_rgb_interval");
 	obs_data_unset_user_value(settings, "digital_glitch_max_rgb_interval");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void digital_glitch_filter_update(retro_effects_filter_data_t *data,
@@ -286,6 +289,7 @@ static void digital_glitch_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = digital_glitch_filter_defaults;
 	filter->filter_update = digital_glitch_filter_update;
 	filter->filter_video_tick = digital_glitch_filter_video_tick;
+	filter->filter_unset_settings = digital_glitch_unset_settings;
 }
 
 void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,

@@ -24,8 +24,13 @@ void analog_glitch_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
-	// obs_data_unset_user_value(settings, "analog_glitch_size");
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void analog_glitch_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "analog_glitch_primary_speed");
 	obs_data_unset_user_value(settings, "analog_glitch_primary_scale");
 	obs_data_unset_user_value(settings, "analog_glitch_secondary_speed");
@@ -40,9 +45,6 @@ void analog_glitch_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "analog_glitch_line_magnitude");
 	obs_data_unset_user_value(settings, "analog_glitch_interfence_alpha");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void analog_glitch_filter_update(retro_effects_filter_data_t *data,
@@ -325,6 +327,7 @@ static void analog_glitch_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = analog_glitch_filter_defaults;
 	filter->filter_update = analog_glitch_filter_update;
 	filter->filter_video_tick = analog_glitch_filter_video_tick;
+	filter->filter_unset_settings = analog_glitch_unset_settings;
 }
 
 void analog_glitch_filter_video_tick(retro_effects_filter_data_t *data,

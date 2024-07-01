@@ -20,7 +20,13 @@ void chromatic_aberration_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void chromatic_aberration_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "ca_type");
 	obs_data_unset_user_value(settings, "ca_red_offset");
 	obs_data_unset_user_value(settings, "ca_red_offset_angle");
@@ -29,9 +35,6 @@ void chromatic_aberration_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "ca_blue_offset");
 	obs_data_unset_user_value(settings, "ca_blue_offset_angle");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void chromatic_aberration_filter_update(retro_effects_filter_data_t *data,
@@ -227,6 +230,7 @@ chromatic_aberration_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = chromatic_aberration_filter_defaults;
 	filter->filter_update = chromatic_aberration_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = chromatic_aberration_unset_settings;
 }
 
 static void
