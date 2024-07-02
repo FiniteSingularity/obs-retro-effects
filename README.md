@@ -28,24 +28,23 @@
 
 Retro Effects is an OBS plug-in that provides several filters to simulate retro hardware (e.g.- CRTs, NTSC Signals, etc...) giving your OBS sources an authentic retro look/feel. Retro effects provides the following filters.
 
-- [OBS Retro Effects](#obs-retro-effects)
-  - [Introduction](#introduction)
-  - [Chromatic Aberration](#chromatic-aberration)
-  - [Frame Skip](#frame-skip)
-  - [Interlace](#interlace)
-  - [Posterize](#posterize)
-  - [Dither](#dither)
-  - [CRT](#crt)
-  - [NTSC](#ntsc)
-  - [Cathode Boot](#cathode-boot)
-  - [Matrix Rain](#matrix-rain)
-  - [Retro Codec](#retro-codec)
-  - [VHS](#vhs)
-  - [Bloom](#bloom)
-  - [Scanlines](#scanlines)
-  - [Digital Glitch](#digital-glitch)
-  - [Analog Glitch](#analog-glitch)
-  - [Conclusion](#conclusion)
+
+- [Chromatic Aberration](#chromatic-aberration)
+- [Frame Skip](#frame-skip)
+- [Interlace](#interlace)
+- [Posterize](#posterize)
+- [Dither](#dither)
+- [CRT](#crt)
+- [NTSC](#ntsc)
+- [Cathode Boot](#cathode-boot)
+- [Matrix Rain](#matrix-rain)
+- [Retro Codec](#retro-codec)
+- [VHS](#vhs)
+- [Bloom](#bloom)
+- [Scanlines](#scanlines)
+- [Digital Glitch](#digital-glitch)
+- [Analog Glitch](#analog-glitch)
+- [Conclusion](#conclusion)
 
 ## Chromatic Aberration
 This filter provides the abilility to shift the red, green, and blue color channels, either manually using the `Manual` type, or by simulating lens CA using the `Lens` type.
