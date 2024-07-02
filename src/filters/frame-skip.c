@@ -12,11 +12,15 @@ void frame_skip_create(retro_effects_filter_data_t *filter)
 
 void frame_skip_destroy(retro_effects_filter_data_t *filter)
 {
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
-	obs_data_unset_user_value(settings, "skip_frames");
-	obs_data_release(settings);
 	bfree(filter->active_filter_data);
 	filter->active_filter_data = NULL;
+}
+
+void frame_skip_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
+	obs_data_unset_user_value(settings, "skip_frames");
+	obs_data_release(settings);
 }
 
 void frame_skip_filter_update(retro_effects_filter_data_t *data,
@@ -74,4 +78,5 @@ static void frame_skip_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = frame_skip_filter_defaults;
 	filter->filter_update = frame_skip_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = frame_skip_unset_settings;
 }

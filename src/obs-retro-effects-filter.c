@@ -88,6 +88,7 @@ static void retro_effects_filter_destroy(void *data)
 
 	filter->filter_destroy(filter);
 	blur_destroy(filter);
+	bloom_destroy(filter);
 
 	bfree(filter->base);
 	bfree(filter);
@@ -231,6 +232,9 @@ static void load_filter(retro_effects_filter_data_t *filter, int old_type)
 	if (old_type != 0) {
 		// Clear out old settings.
 		// Destroy old type data object.
+		if (filter->filter_unset_settings) {
+			filter->filter_unset_settings(filter);
+		}
 		if (filter->filter_destroy) {
 			filter->filter_destroy(filter);
 		}

@@ -23,7 +23,13 @@ void vhs_destroy(retro_effects_filter_data_t *filter)
 
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void vhs_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	//obs_data_unset_user_value(settings, "vhs_size");
 	obs_data_unset_user_value(settings, "vhs_wrinkle_occurrence_prob");
 	obs_data_unset_user_value(settings, "vhs_wrinkle_size");
@@ -41,9 +47,6 @@ void vhs_destroy(retro_effects_filter_data_t *filter)
 	obs_data_unset_user_value(settings, "vhs_head_switch_secondary_horiz_offset");
 	obs_data_unset_user_value(settings, "vhs_head_switch_secondary_vert_amount");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void vhs_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
@@ -327,6 +330,7 @@ static void vhs_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = vhs_filter_defaults;
 	filter->filter_update = vhs_filter_update;
 	filter->filter_video_tick = vhs_filter_video_tick;
+	filter->filter_unset_settings = vhs_unset_settings;
 }
 
 void vhs_filter_video_tick(retro_effects_filter_data_t *data,

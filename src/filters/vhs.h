@@ -54,6 +54,8 @@ struct vhs_filter_data {
 
 extern void vhs_create(retro_effects_filter_data_t *filter);
 extern void vhs_destroy(retro_effects_filter_data_t *filter);
+extern void vhs_unset_settings(retro_effects_filter_data_t* filter);
+
 extern void vhs_filter_video_render(retro_effects_filter_data_t *data);
 extern void vhs_filter_properties(retro_effects_filter_data_t *data,
 				  obs_properties_t *props);

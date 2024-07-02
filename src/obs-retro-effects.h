@@ -61,6 +61,7 @@ struct retro_effects_filter_data {
 			      obs_data_t *);                        // update
 	void (*filter_video_render)(retro_effects_filter_data_t *); // render
 	void (*filter_destroy)(retro_effects_filter_data_t *);      // destroy
+	void (*filter_unset_settings)(retro_effects_filter_data_t *);
 	void (*filter_video_tick)(retro_effects_filter_data_t *,
 				  float); // Video Tick
 

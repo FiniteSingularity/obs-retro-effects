@@ -25,14 +25,17 @@ void interlace_destroy(retro_effects_filter_data_t *filter)
 	}
 	obs_leave_graphics();
 
-	obs_data_t *settings = obs_source_get_settings(filter->base->context);
+	bfree(filter->active_filter_data);
+	filter->active_filter_data = NULL;
+}
+
+void interlace_unset_settings(retro_effects_filter_data_t* filter)
+{
+	obs_data_t* settings = obs_source_get_settings(filter->base->context);
 	obs_data_unset_user_value(settings, "interlace_thickness");
 	obs_data_unset_user_value(settings, "interlace_brightness_reduction");
 	obs_data_unset_user_value(settings, "interlace_reduce_alpha");
 	obs_data_release(settings);
-
-	bfree(filter->active_filter_data);
-	filter->active_filter_data = NULL;
 }
 
 void interlace_filter_update(retro_effects_filter_data_t *data,
@@ -151,6 +154,7 @@ static void interlace_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_defaults = interlace_filter_defaults;
 	filter->filter_update = interlace_filter_update;
 	filter->filter_video_tick = NULL;
+	filter->filter_unset_settings = interlace_unset_settings;
 }
 
 static void load_interlace_effect(interlace_filter_data_t *filter)
