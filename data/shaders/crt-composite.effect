@@ -45,16 +45,31 @@ float4 mainImage(VertData v_in) : TARGET
 
 	float4 color = image.Sample(textureSampler, uv);
 	float4 blur_color = blur_image.Sample(textureSampler, uv);
-	// Brightness correction on bloom/blur layer
-	//blur_color.rgb *= brightness;
+
+	// Premultiply alpha
+	color.rgb *= color.a;
+	blur_color.rgb *= blur_color.a;
+
 	float threshold = brightness;
-	float4 highlight = saturate(blur_color - threshold) * 1.0 / (1.0 - threshold);
+
+	// A hard threshold bloom is definitely its own look so we might want options for it, but here I'm implementing a (slightly) more physically-accurate one
+	// float4 highlight = saturate(blur_color - threshold) / (1.0 - threshold);
+
 	// Screen Blending between main color layer and bloom/blur layer
-	color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - highlight.rgb);
+	// color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - highlight.rgb);
+
+	// Do a lerp instead, it's more realistic! Great article on bloom: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
+	color = lerp(color, blur_color, threshold);
+
+	// Safely convert back to straight alpha
+	color.rgb = saturate(color.rgb / max(color.a, 0.0001f));
+
 	// Apply black/white levels correction
 	color.rgb = saturate((color.rgb - black_level) / (white_level - black_level));
+
 	// Apply barrel disortion anti-alias mask to alpha channel
 	color.a *= aa_mask;
+
 	return color;
 }
 

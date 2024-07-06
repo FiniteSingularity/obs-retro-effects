@@ -30,36 +30,105 @@ float offsetLookup(uint i) {
     return offset[i/4u][i%4u];
 }
 
+float4 PremulToStraight(float4 col)
+{
+	col.rgb = saturate(col.rgb / max(col.a, 0.0001f));
+	return col;
+}
+
+float4 StraightToPremul(float4 col)
+{
+	col.rgb *= col.a;
+	return col;
+}
+
+
 VertData mainTransform(VertData v_in)
 {
     v_in.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
     return v_in;
 }
 
-float4 mainImage(VertData v_in) : TARGET
+float4 SampleBlur(float2 uv)
 {
-    // DO THE BLUR
-    // 1. Sample incoming pixel, multiply by weight[0]
-    float4 col = image.Sample(textureSampler, v_in.uv) * weightLookup(0);
-    float total_weight = weightLookup(0);
+	// DO THE BLUR
 
-    // 2. March out from incoming pixel, multiply by corresponding weight.
-    for(uint i=1; i<kernel_size; i++) {
-        float weight = weightLookup(i);
-        float offset = offsetLookup(i);
-        total_weight += 2.0*weight;
-        col += image.Sample(textureSampler, v_in.uv + (offset * texel_step)) * weight;
-        col += image.Sample(textureSampler, v_in.uv - (offset * texel_step)) * weight;
-    }
-    col /= total_weight;
-    return col;
+	// 1. Sample incoming pixel, multiply by weight[0]
+	float weight = weightLookup(0);
+	float4 col = image.Sample(textureSampler, uv) * weight;
+	float total_weight = weight;
+
+	// 2. March out from incoming pixel, multiply by corresponding weight.
+	for (uint i = 1; i < kernel_size; i++)
+	{
+		float weight = weightLookup(i);
+		float offset = offsetLookup(i);
+		total_weight += 2.0 * weight;
+		col += image.Sample(textureSampler, uv + (offset * texel_step)) * weight;
+		col += image.Sample(textureSampler, uv - (offset * texel_step)) * weight;
+	}
+	col /= total_weight;
+	return col;
 }
 
-technique Draw
+float4 mainStraightToPremul(VertData v_in) : TARGET
 {
-    pass
-    {
-        vertex_shader = mainTransform(v_in);
-        pixel_shader = mainImage(v_in);
-    }
+	return StraightToPremul(image.Sample(textureSampler, v_in.uv));
+}
+
+float4 mainPremulToStraight(VertData v_in) : TARGET
+{
+	return PremulToStraight(image.Sample(textureSampler, v_in.uv));
+}
+
+float4 mainBlur(VertData v_in) : TARGET
+{
+	// Input image is premultiplied
+	float4 col = SampleBlur(v_in.uv);
+	// Output is still premultiplied
+	return col;
+}
+
+float4 mainBlurPremulToStraight(VertData v_in) : TARGET
+{
+    	// Input image is premultiplied
+	float4 col = SampleBlur(v_in.uv);
+	// Output is straight alpha
+	return PremulToStraight(col);
+}
+
+technique DrawStraightToPremul
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainStraightToPremul(v_in);
+	}
+}
+
+technique DrawPremulToStraight
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainPremulToStraight(v_in);
+	}
+}
+
+technique DrawBlur
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainBlur(v_in);
+	}
+}
+
+technique DrawBlurPremulToStraight
+{
+	pass
+	{
+		vertex_shader = mainTransform(v_in);
+		pixel_shader = mainBlurPremulToStraight(v_in);
+	}
 }
