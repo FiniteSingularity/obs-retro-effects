@@ -1,4 +1,6 @@
 #include <obs-module.h>
+#include <util/dstr.h>
+
 #include "../obs-retro-effects.h"
 
 #define POSTERIZE_COLOR_PASSTHROUGH 0
@@ -21,6 +23,8 @@ struct posterize_filter_data {
 	gs_eparam_t *param_color_2;
 	gs_eparam_t *param_color_source;
 
+	struct dstr color_source_name;
+	bool has_color_source;
 	obs_weak_source_t *color_source;
 	float levels;
 	uint32_t technique;
@@ -45,3 +49,5 @@ static void posterize_load_effect(posterize_filter_data_t *filter);
 static bool posterize_technique_modified(obs_properties_t *props,
 					 obs_property_t *p,
 					 obs_data_t *settings);
+static void posterize_filter_video_tick(retro_effects_filter_data_t* data, float seconds);
+void load_color_source(posterize_filter_data_t* filter);

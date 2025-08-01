@@ -15,6 +15,8 @@ struct cathode_boot_filter_data {
 	gs_eparam_t *param_fade_range;
 	gs_eparam_t *param_thickness;
 	gs_eparam_t *param_glow_size;
+	gs_eparam_t *param_glow_color;
+	gs_eparam_t* param_bg_color;
 
 	float progress;
 
@@ -25,6 +27,8 @@ struct cathode_boot_filter_data {
 	struct vec2 horiz_range;
 	struct vec2 fade_range;
 	struct vec2 thickness;
+	struct vec4 glow_color;
+	struct vec4 bg_color;
 };
 
 extern void cathode_boot_create(retro_effects_filter_data_t *filter);

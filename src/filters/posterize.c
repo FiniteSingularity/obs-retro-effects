@@ -6,6 +6,7 @@ void posterize_create(retro_effects_filter_data_t *filter)
 	posterize_filter_data_t *data =
 		bzalloc(sizeof(posterize_filter_data_t));
 	filter->active_filter_data = data;
+	dstr_init_copy(&data->color_source_name, "");
 	posterize_set_functions(filter);
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	posterize_filter_defaults(settings);
@@ -58,23 +59,35 @@ void posterize_filter_update(retro_effects_filter_data_t *data,
 	filter->technique =
 		(uint32_t)obs_data_get_int(settings, "posterize_technique");
 
-	const char *color_source_name =
+
+	const char* color_source_name =
 		obs_data_get_string(settings, "posterize_map_source");
-	obs_source_t *color_source =
-		(color_source_name && strlen(color_source_name))
-			? obs_get_source_by_name(color_source_name)
-			: NULL;
-	if (color_source) {
-		obs_weak_source_release(filter->color_source);
-		filter->color_source =
-			obs_source_get_weak_source(color_source);
-		obs_source_release(color_source);
+
+	dstr_copy(&filter->color_source_name, color_source_name);
+
+	filter->has_color_source = (color_source_name && strlen(color_source_name));
+
+	if (filter->has_color_source) {
+		load_color_source(filter);
 	} else {
-		if (filter->color_source) {
-			obs_weak_source_release(filter->color_source);
-		}
 		filter->color_source = NULL;
 	}
+
+	//obs_source_t *color_source =
+	//	(color_source_name && strlen(color_source_name))
+	//		? obs_get_source_by_name(color_source_name)
+	//		: NULL;
+	//if (color_source) {
+	//	obs_weak_source_release(filter->color_source);
+	//	filter->color_source =
+	//		obs_source_get_weak_source(color_source);
+	//	obs_source_release(color_source);
+	//} else {
+	//	if (filter->color_source) {
+	//		obs_weak_source_release(filter->color_source);
+	//	}
+	//	filter->color_source = NULL;
+	//}
 }
 
 void posterize_filter_defaults(obs_data_t *settings) {
@@ -258,7 +271,7 @@ static void posterize_set_functions(retro_effects_filter_data_t *filter)
 	filter->filter_destroy = posterize_destroy;
 	filter->filter_defaults = posterize_filter_defaults;
 	filter->filter_update = posterize_filter_update;
-	filter->filter_video_tick = NULL;
+	filter->filter_video_tick = posterize_filter_video_tick;
 	filter->filter_unset_settings = posterize_unset_settings;
 }
 
@@ -344,4 +357,32 @@ static bool posterize_technique_modified(obs_properties_t *props,
 		break;
 	}
 	return true;
+}
+
+void posterize_filter_video_tick(retro_effects_filter_data_t* data, float seconds)
+{
+	posterize_filter_data_t* filter = data->active_filter_data;
+	if (filter->has_color_source && filter->color_source == NULL) {
+		load_color_source(filter);
+	}
+}
+
+void load_color_source(posterize_filter_data_t* filter)
+{
+	obs_source_t* color_source = filter->has_color_source
+		? obs_get_source_by_name(filter->color_source_name.array)
+		: NULL;
+
+
+	if (color_source) {
+		obs_weak_source_release(filter->color_source);
+		filter->color_source =
+			obs_source_get_weak_source(color_source);
+		obs_source_release(color_source);
+	} else {
+		if (filter->color_source) {
+			obs_weak_source_release(filter->color_source);
+		}
+		filter->color_source = NULL;
+	}
 }

@@ -52,13 +52,37 @@ void bloom_f_filter_update(retro_effects_filter_data_t *data,
 		(float)obs_data_get_double(settings, "bloom_intensity") /
 		100.0f;
 
-	if (filter->threshold_type == BLOOM_THRESHOLD_TYPE_CUSTOM) {
+	filter->threshold_type = (uint8_t)obs_data_get_int(settings, "bloom_threshold_type");
+
+	switch (filter->threshold_type) {
+	case BLOOM_THRESHOLD_TYPE_LUMINANCE:
+		filter->level_red = 0.299f;
+		filter->level_green = 0.587f;
+		filter->level_blue = 0.114f;
+		break;
+	case BLOOM_THRESHOLD_TYPE_RED:
+		filter->level_red = 1.0f;
+		filter->level_green = -0.5f;
+		filter->level_blue = -0.5f;
+		break;
+	case BLOOM_THRESHOLD_TYPE_GREEN:
+		filter->level_red = -0.5f;
+		filter->level_green = 1.0f;
+		filter->level_blue = -0.5f;
+		break;
+	case BLOOM_THRESHOLD_TYPE_BLUE:
+		filter->level_red = -0.5f;
+		filter->level_green = -0.5f;
+		filter->level_blue = 1.0f;
+		break;
+	case BLOOM_THRESHOLD_TYPE_CUSTOM:
 		filter->level_red = (float)obs_data_get_double(
 			settings, "bloom_red_level");
 		filter->level_green = (float)obs_data_get_double(
 			settings, "bloom_green_level");
 		filter->level_blue = (float)obs_data_get_double(
 			settings, "bloom_blue_level");
+		break;
 	}
 
 	if (filter->reload_effect) {
@@ -197,30 +221,6 @@ static bool threshold_type_modified(void *data, obs_properties_t *props,
 	setting_visibility("bloom_levels_group", false, props);
 	bloom_f_filter_data_t *filter = data;
 	filter->threshold_type = (uint8_t)obs_data_get_int(settings, "bloom_threshold_type");
-	switch (filter->threshold_type) {
-	case BLOOM_THRESHOLD_TYPE_LUMINANCE:
-		filter->level_red = 0.299f;
-		filter->level_green = 0.587f;
-		filter->level_blue = 0.114f;
-		break;
-	case BLOOM_THRESHOLD_TYPE_RED:
-		filter->level_red = 1.0f;
-		filter->level_green = -0.5f;
-		filter->level_blue = -0.5f;
-		break;
-	case BLOOM_THRESHOLD_TYPE_GREEN:
-		filter->level_red = -0.5f;
-		filter->level_green = 1.0f;
-		filter->level_blue = -0.5f;
-		break;
-	case BLOOM_THRESHOLD_TYPE_BLUE:
-		filter->level_red = -0.5f;
-		filter->level_green = -0.5f;
-		filter->level_blue = 1.0f;
-		break;
-	case BLOOM_THRESHOLD_TYPE_CUSTOM:
-		setting_visibility("bloom_levels_group",true, props);
-		break;
-	}
+	setting_visibility("bloom_levels_group", filter->threshold_type == BLOOM_THRESHOLD_TYPE_CUSTOM, props);
 	return true;
 }
