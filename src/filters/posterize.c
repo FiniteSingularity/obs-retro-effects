@@ -361,6 +361,7 @@ static bool posterize_technique_modified(obs_properties_t *props,
 
 void posterize_filter_video_tick(retro_effects_filter_data_t* data, float seconds)
 {
+	UNUSED_PARAMETER(seconds);
 	posterize_filter_data_t* filter = data->active_filter_data;
 	if (filter->has_color_source && filter->color_source == NULL) {
 		load_color_source(filter);
