@@ -41,6 +41,8 @@ void cathode_boot_unset_settings(retro_effects_filter_data_t* filter)
 	obs_data_unset_user_value(settings, "cathode_boot_fade_start");
 	obs_data_unset_user_value(settings, "cathode_boot_fade_end");
 	obs_data_unset_user_value(settings, "cathode_boot_glow_size");
+	obs_data_unset_user_value(settings, "cathode_boot_glow_color");
+	obs_data_unset_user_value(settings, "cathode_boot_bg_color");
 	obs_data_release(settings);
 }
 
@@ -62,6 +64,13 @@ void cathode_boot_filter_update(retro_effects_filter_data_t *data,
 	filter->thickness.x = (float)obs_data_get_double(settings, "cathode_boot_horiz_thickness");
 	filter->thickness.y = (float)obs_data_get_double(settings, "cathode_boot_vert_thickness");
 	filter->glow_size = (float)obs_data_get_double(settings, "cathode_boot_glow_size");
+	vec4_from_rgba(&filter->glow_color,
+		(uint32_t)obs_data_get_int(settings,
+			"cathode_boot_glow_color"));
+	vec4_from_rgba(&filter->bg_color,
+		(uint32_t)obs_data_get_int(
+			settings, "cathode_boot_bg_color"));
+
 }
 
 void cathode_boot_filter_defaults(obs_data_t *settings) {
@@ -75,6 +84,8 @@ void cathode_boot_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "cathode_boot_vert_thickness", 1.0);
 	obs_data_set_default_double(settings, "cathode_boot_horiz_thickness", 1.0);
 	obs_data_set_default_double(settings, "cathode_boot_glow_size", 2.0);
+	obs_data_set_default_int(settings, "cathode_boot_glow_color", 0xFFFFFFFF);
+	obs_data_set_default_int(settings, "cathode_boot_bg_color", 0xFF000000);
 }
 
 void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
@@ -106,6 +117,16 @@ void cathode_boot_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.CathodeBoot.GlowSize"), 1.0,
 		30.0, 1.0);
 	obs_property_float_set_suffix(p, "px");
+
+	p = obs_properties_add_color_alpha(
+		terminal_line, "cathode_boot_glow_color",
+		obs_module_text("RetroEffects.CathodeBoot.GlowColor")
+	);
+
+	p = obs_properties_add_color_alpha(
+		terminal_line, "cathode_boot_bg_color",
+		obs_module_text("RetroEffects.CathodeBoot.BackgroundColor")
+	);
 
 	obs_properties_add_group(
 		props, "cathode_boot_terminal_line",
@@ -214,6 +235,16 @@ void cathode_boot_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_float(filter->param_glow_size, filter->glow_size);
 	}
 
+	if (filter->param_glow_color) {
+		gs_effect_set_vec4(filter->param_glow_color,
+			&filter->glow_color);
+	}
+
+	if (filter->param_bg_color) {
+		gs_effect_set_vec4(filter->param_bg_color,
+			&filter->bg_color);
+	}
+
 	set_render_parameters();
 	set_blending_parameters();
 
@@ -303,6 +334,10 @@ static void cathode_boot_load_effect(cathode_boot_filter_data_t *filter)
 				filter->param_thickness = param;
 			} else if (strcmp(info.name, "glow_size") == 0) {
 				filter->param_glow_size = param;
+			} else if (strcmp(info.name, "glow_color") == 0) {
+				filter->param_glow_color = param;
+			} else if (strcmp(info.name, "bg_color") == 0) {
+				filter->param_bg_color = param;
 			}
 		}
 	}

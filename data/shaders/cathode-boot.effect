@@ -7,14 +7,15 @@ uniform float2 horiz_range;
 uniform float2 fade_range;
 uniform float2 thickness;
 uniform float glow_size;
+uniform float4 glow_color;
+uniform float4 bg_color;
 
 sampler_state textureSampler{
     Filter = Linear;
-    AddressU = Border;
-    AddressV = Border;
+    AddressU = Clamp;
+    AddressV = Clamp;
     MinLOD = 0;
     MaxLOD = 0;
-    BorderColor = FF000000;
 };
 
 struct VertData
@@ -29,28 +30,81 @@ VertData mainTransform(VertData v_in)
 	return v_in;
 }
 
+float SDF(float2 coord, float2 dims)
+{
+	float2 dist = abs(coord) - dims;
+	return min(max(dist.x, dist.y), 0.0f) + length(max(dist, float2(0.0f, 0.0f)));
+}
+
 float4 mainImage(VertData v_in) : TARGET
 {
+	// normalizes 0,1 position to -0.5,0.5
+	// 0,0 is now center of frame
 	float2 d = v_in.uv - float2(0.5, 0.5);
+	
+	// Normalized progress value (how far into the collapse we are)
 	float2 progress_norm = float2(saturate((progress - horiz_range.x) / (horiz_range.y - horiz_range.x)), saturate((progress - vert_range.x) / (vert_range.y - vert_range.x)));
+	// How far into the fade we are
 	float progress_fade = saturate((progress - fade_range.x) / (fade_range.y - fade_range.x));
-	float2 scale = progress_norm * (thickness - float2(1.0, 1.0)) + float2(1.0, 1.0);
-	float2 offset = progress_norm * (thickness - float2(0.5, 0.5)) + float2(0.5, 0.5);
 
-	float2 dd = (abs(d) - offset) * uv_size;
-	float dist = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0);
-	float glow = smoothstep(0.0, glow_size, glow_size - dist);
+	float2 scale = progress_norm * (thickness - float2(1.0, 1.0)) + float2(1.0, 1.0);
+
+	float2 offset = progress_norm * (thickness - float2(0.5, 0.5)) + float2(0.5, 0.5);
+	float2 px_scale = floor(scale * uv_size);
+	
+	scale = px_scale / uv_size;
+	
+	offset = floor(offset * uv_size);
+	float2 px_coord = floor(d * uv_size);
 	
 	d /= scale;
+	
+	float sdf_val = SDF(px_coord * 2.0f, px_scale);
 
 	float2 uv = float2(0.5, 0.5) + d;
-	float2 ap = step(abs(d), float2(0.5, 0.5)); // Thanks to twitch viewer
-	bool inside = ap.x * ap.y > 0.;             // FuleSnabel
-
+	bool inside = sdf_val <= 0.0f;
+	
 	float4 color = image.Sample(textureSampler, uv);
-	color.rgb += max(progress_norm.x, progress_norm.y);
-	return (inside ? color : float4(glow, glow, glow, 1.0)) * (1.0 - progress_fade) + (progress_fade) * float4(0.0, 0.0, 0.0, 1.0);
+	//color.rgb += max(progress_norm.x, progress_norm.y);
+	color = lerp(color, glow_color, max(progress_norm.x, progress_norm.y));
+	
+	float4 glow = saturate(lerp(bg_color, glow_color, 1.0 - (max(sdf_val, 0.0)) / glow_size));
+	
+	float4 c = inside ? color : glow;
+	
+	return c * (1.0 - progress_fade) + (progress_fade) * bg_color;
 }
+
+//float4 mainImage(VertData v_in) : TARGET
+//{
+//	// normalizes 0,1 position to -0.5,0.5
+//	float2 d = v_in.uv - float2(0.5, 0.5);
+//	// Normalized progress value (how far into the collapse we are)
+//	float2 progress_norm = float2(saturate((progress - horiz_range.x) / (horiz_range.y - horiz_range.x)), saturate((progress - vert_range.x) / (vert_range.y - vert_range.x)));
+//	// How far into the fade we are
+//	float progress_fade = saturate((progress - fade_range.x) / (fade_range.y - fade_range.x));
+
+//	float2 scale = progress_norm * (thickness - float2(1.0, 1.0)) + float2(1.0, 1.0);
+//	float2 offset = progress_norm * (thickness - float2(0.5, 0.5)) + float2(0.5, 0.5);
+//	scale = floor(scale * uv_size) / uv_size;
+//	offset = floor(offset * uv_size);
+	
+//	float2 dd = abs(d) * uv_size - offset;
+//	float dist = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0);
+//	float glow = dist < 1.000001f ? 1.0 : 0.0;
+//	//float glow = smoothstep(0.0, glow_size, glow_size - dist);
+//	//float glow = 0.0f;
+	
+//	d /= scale;
+
+//	float2 uv = float2(0.5, 0.5) + d;
+//	float2 ap = step(abs(d), float2(0.5, 0.5)); // Thanks to twitch viewer
+//	bool inside = ap.x * ap.y > 0.;             // FuleSnabel
+
+//	float4 color = image.Sample(textureSampler, uv);
+//	color.rgb += max(progress_norm.x, progress_norm.y);
+//	return (inside ? color : float4(glow, glow, glow, 1.0)) * (1.0 - progress_fade) + (progress_fade) * float4(0.0, 0.0, 0.0, 1.0);
+//}
 
 technique Draw
 {

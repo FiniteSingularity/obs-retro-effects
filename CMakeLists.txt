@@ -1,15 +1,12 @@
 # --- Detect if the plugin is build out of tree or not ---
 if(CMAKE_PROJECT_NAME STREQUAL "obs-studio")
   set(BUILD_OUT_OF_TREE OFF)
-  if(OBS_CMAKE_VERSION VERSION_GREATER_EQUAL 3.0.0)
-    legacy_check()
-  endif()
 else()
   set(BUILD_OUT_OF_TREE ON)
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(obs-retro-effects VERSION 1.0.0)
+project(obs-retro-effects VERSION 1.0.1)
 set(PROJECT_FULL_NAME "Retro Effects")
 
 # Set new UUIDs when you start to create a new plugin.
