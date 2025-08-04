@@ -50,33 +50,19 @@ void blur_destroy(retro_effects_filter_data_t *filter)
 	filter->blur_data = NULL;
 }
 
-/*
- *  Performs an area blur using the gaussian kernel. Blur is
- *  equal in both x and y directions.
- */
-void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
+static void gaussian_area_blur_tech(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data, char const* technique)
 {
 	gs_effect_t *effect = data->gaussian_effect;
 
-	if (!effect || !texture) {
-		return;
+	uint32_t width = gs_texture_get_width(src);
+	uint32_t height = gs_texture_get_height(src);
+
+	if (data->param_uv_size) {
+		struct vec2 uv_size;
+		uv_size.x = (float)width;
+		uv_size.y = (float)height;
+		gs_effect_set_vec2(data->param_uv_size, &uv_size);
 	}
-
-	uint32_t width = gs_texture_get_width(texture);
-	uint32_t height = gs_texture_get_height(texture);
-
-	if (data->radius < MIN_GAUSSIAN_BLUR_RADIUS) {
-		data->blur_output =
-			create_or_reset_texrender(data->blur_output);
-		texrender_set_texture(texture, data->blur_output);
-		return;
-	}
-
-	data->blur_buffer_1 = create_or_reset_texrender(data->blur_buffer_1);
-
-	// 1. First pass- apply 1D blur kernel to horizontal dir.
-	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
-	gs_effect_set_texture(image, texture);
 
 	switch (data->device_type) {
 	case GS_DEVICE_DIRECT3D_11:
@@ -98,10 +84,40 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 		}
 	}
 
-	const int k_size = (int)data->kernel_size;
 	if (data->param_kernel_size) {
+		const int k_size = (int)data->kernel_size;
 		gs_effect_set_int(data->param_kernel_size, k_size);
 	}
+
+	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+	gs_effect_set_texture_srgb(image, src);
+
+	const bool previous_framebuffer_srgb = gs_framebuffer_srgb_enabled();
+	gs_enable_framebuffer_srgb(true);
+
+	set_blending_parameters();
+
+	if (gs_texrender_begin(dest, width, height)) {
+		gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f,
+			 100.0f);
+		while (gs_effect_loop(effect, technique))
+			gs_draw_sprite(src, 0, width, height);
+		gs_texrender_end(dest);
+	}
+
+	gs_blend_state_pop();
+
+	gs_enable_framebuffer_srgb(previous_framebuffer_srgb);
+}
+
+static void gaussian_area_blur_premul(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data)
+{
+	gaussian_area_blur_tech(src, dest, data, "DrawStraightToPremul");
+}
+
+static void gaussian_area_blur_h(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data)
+{
+	uint32_t width = gs_texture_get_width(src);
 
 	struct vec2 texel_step;
 	texel_step.x = 1.0f / (float)width;
@@ -110,46 +126,58 @@ void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
 		gs_effect_set_vec2(data->param_texel_step, &texel_step);
 	}
 
-	set_blending_parameters();
+	gaussian_area_blur_tech(src, dest, data, "DrawBlur");
+}
 
-	if (gs_texrender_begin(data->blur_buffer_1, width, height)) {
-		gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f,
-			 100.0f);
-		while (gs_effect_loop(effect, "Draw"))
-			gs_draw_sprite(texture, 0, width, height);
-		gs_texrender_end(data->blur_buffer_1);
-	}
+static void gaussian_area_blur_v(gs_texture_t *src, gs_texrender_t *dest, blur_data_t *data)
+{
+	uint32_t height = gs_texture_get_height(src);
 
-	// 2. Save texture from first pass in variable "texture"
-	gs_texture_t *texture2 = gs_texrender_get_texture(data->blur_buffer_1);
-
-	// 3. Second Pass- Apply 1D blur kernel vertically.
-	image = gs_effect_get_param_by_name(effect, "image");
-	gs_effect_set_texture(image, texture2);
-
-	if (data->device_type == GS_DEVICE_OPENGL &&
-	    data->param_kernel_texture) {
-		gs_effect_set_texture(data->param_kernel_texture,
-				      data->kernel_texture);
-	}
-
+	struct vec2 texel_step;
 	texel_step.x = 0.0f;
 	texel_step.y = 1.0f / (float)height;
 	if (data->param_texel_step) {
 		gs_effect_set_vec2(data->param_texel_step, &texel_step);
 	}
 
-	data->blur_output = create_or_reset_texrender(data->blur_output);
+	gaussian_area_blur_tech(src, dest, data, "DrawBlurPremulToStraight");
+}
 
-	if (gs_texrender_begin(data->blur_output, width, height)) {
-		gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f,
-			 100.0f);
-		while (gs_effect_loop(effect, "Draw"))
-			gs_draw_sprite(texture, 0, width, height);
-		gs_texrender_end(data->blur_output);
+/*
+ *  Performs an area blur using the gaussian kernel. Blur is
+ *  equal in both x and y directions.
+ */
+void gaussian_area_blur(gs_texture_t *texture, blur_data_t *data)
+{
+	// Ensure data exists, intermediate and output textures exist
+	gs_effect_t *effect = data->gaussian_effect;
+
+	if (!effect || !texture) {
+		return;
 	}
 
-	gs_blend_state_pop();
+	if (data->radius < MIN_GAUSSIAN_BLUR_RADIUS) {
+		data->blur_output =
+			create_or_reset_texrender(data->blur_output);
+		texrender_set_texture(texture, data->blur_output);
+		return;
+	}
+
+	// 1. Prepare by converting to premultiplied alpha
+	// This ensures that the bilinear filtering in the blur passes gives correct results
+	data->blur_buffer_1 = create_or_reset_texrender(data->blur_buffer_1);
+	gaussian_area_blur_premul(texture, data->blur_buffer_1, data);
+	
+	// 2. First pass- apply 1D blur kernel to horizontal dir.
+	
+	gs_texture_t *buffer_1_tex = gs_texrender_get_texture(data->blur_buffer_1);
+	data->blur_buffer_2 = create_or_reset_texrender(data->blur_buffer_2);
+	gaussian_area_blur_h(buffer_1_tex, data->blur_buffer_2, data);
+	
+	// 3. Second Pass- Apply 1D blur kernel vertically.
+	gs_texture_t *buffer_2_tex = gs_texrender_get_texture(data->blur_buffer_2);
+	data->blur_output = create_or_reset_texrender(data->blur_output);
+	gaussian_area_blur_v(buffer_2_tex, data->blur_output, data);
 }
 
 /*

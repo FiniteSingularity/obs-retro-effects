@@ -70,7 +70,7 @@ void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 	filter->phosphor_size.y =
 		(float)obs_data_get_double(settings, "crt_phosphor_height")/9.0f;
 	filter->brightness =
-		0.3f * (1.0f - (float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f);
+		(float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f;
 
 	float bloom = (float)obs_data_get_double(settings, "crt_bloom") *
 		      30.0f / 100.0f;
@@ -232,7 +232,7 @@ static void crt_filter_render_crt_mask(retro_effects_filter_data_t* data)
 		gs_effect_set_vec2(filter->param_uv_size, &uv_size);
 	}
 	if (filter->param_image) {
-		gs_effect_set_texture(filter->param_image, image);
+		gs_effect_set_texture_srgb(filter->param_image, image);
 	}
 
 	if (filter->param_mask_intensity) {
@@ -250,6 +250,9 @@ static void crt_filter_render_crt_mask(retro_effects_filter_data_t* data)
 				    filter->corner_radius);
 	}
 
+	const bool previous_framebuffer_srgb = gs_framebuffer_srgb_enabled();
+	gs_enable_framebuffer_srgb(true);
+
 	set_render_parameters();
 	set_blending_parameters();
 
@@ -266,6 +269,8 @@ static void crt_filter_render_crt_mask(retro_effects_filter_data_t* data)
 	}
 	dstr_free(&technique);
 	gs_blend_state_pop();
+
+	gs_enable_framebuffer_srgb(previous_framebuffer_srgb);
 }
 
 static void crt_filter_render_blur(retro_effects_filter_data_t *data)
@@ -295,11 +300,11 @@ static void crt_filter_render_composite(retro_effects_filter_data_t* data)
 		create_or_reset_texrender(base->output_texrender);
 
 	if (filter->param_image_composite) {
-		gs_effect_set_texture(filter->param_image_composite, image);
+		gs_effect_set_texture_srgb(filter->param_image_composite, image);
 	}
 
 	if (filter->param_blur_image_composite) {
-		gs_effect_set_texture(filter->param_blur_image_composite, blur_image);
+		gs_effect_set_texture_srgb(filter->param_blur_image_composite, blur_image);
 	}
 
 	if (filter->param_brightness_composite) {
@@ -321,6 +326,9 @@ static void crt_filter_render_composite(retro_effects_filter_data_t* data)
 		gs_effect_set_float(filter->param_distort_composite, filter->barrel_distortion);
 	}
 
+	const bool previous_framebuffer_srgb = gs_framebuffer_srgb_enabled();
+	gs_enable_framebuffer_srgb(true);
+
 	set_render_parameters();
 	set_blending_parameters();
 
@@ -337,6 +345,8 @@ static void crt_filter_render_composite(retro_effects_filter_data_t* data)
 	}
 	dstr_free(&technique);
 	gs_blend_state_pop();
+
+	gs_enable_framebuffer_srgb(previous_framebuffer_srgb);
 }
 
 static void crt_set_functions(retro_effects_filter_data_t *filter)
