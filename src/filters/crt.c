@@ -207,7 +207,6 @@ void crt_filter_video_render(retro_effects_filter_data_t *data)
 
 static void crt_filter_render_bloom(retro_effects_filter_data_t* data)
 {
-	base_filter_data_t *base = data->base;
 	crt_filter_data_t *filter = data->active_filter_data;
 
 	gs_texture_t *image =
