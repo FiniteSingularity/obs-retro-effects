@@ -1,6 +1,7 @@
 #include "crt.h"
 #include "../obs-utils.h"
 #include "../blur/blur.h"
+#include "../blur/bloom.h"
 
 void crt_create(retro_effects_filter_data_t *filter)
 {
@@ -69,13 +70,12 @@ void crt_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 		(float)obs_data_get_double(settings, "crt_phosphor_width")/9.0f;
 	filter->phosphor_size.y =
 		(float)obs_data_get_double(settings, "crt_phosphor_height")/9.0f;
-	filter->brightness =
-		0.3f * (1.0f - (float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f);
+	filter->bloom_threshold =
+		(float)obs_data_get_double(settings, "crt_bloom_threshold") / 100.0f;
 
-	float bloom = (float)obs_data_get_double(settings, "crt_bloom") *
-		      30.0f / 100.0f;
-	data->blur_data->radius = bloom;
-	set_gaussian_radius(bloom, data->blur_data);
+	filter->bloom_size = (float)obs_data_get_double(settings, "crt_bloom");
+	filter->bloom_intensity =
+		(float)obs_data_get_double(settings, "crt_bloom_intensity")/100.0f;
 
 	filter->mask_intensity =
 		(float)obs_data_get_double(settings, "crt_mask_intensity") /
@@ -102,7 +102,7 @@ void crt_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "crt_mask_intensity", 70.0);
 	obs_data_set_default_double(settings, "crt_bloom", 5.0);
 	obs_data_set_default_double(settings, "crt_bloom_threshold", 75.0);
-	//obs_data_set_default_double(settings, "crt_bloom_intensity", 50.0);
+	obs_data_set_default_double(settings, "crt_bloom_intensity", 50.0);
 	obs_data_set_default_double(settings, "crt_corner_radius", 25.0);
 	obs_data_set_default_double(settings, "crt_barrel_distort", 1.7);
 	obs_data_set_default_double(settings, "crt_vignette", 15.0);
@@ -140,11 +140,11 @@ void crt_filter_properties(retro_effects_filter_data_t *data,
 		0.1);
 	obs_property_float_set_suffix(p, "%");
 
-	//p = obs_properties_add_float_slider(
-	//	phosphor_bloom, "crt_bloom_intensity",
-	//	obs_module_text("RetroEffects.CRT.BloomIntensity"), 0.0, 100.0,
-	//	0.1);
-	//obs_property_float_set_suffix(p, "%");
+	p = obs_properties_add_float_slider(
+		phosphor_bloom, "crt_bloom_intensity",
+		obs_module_text("RetroEffects.CRT.BloomIntensity"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
 
 	obs_properties_add_group(
 		props, "crt_phosphor_bloom",
@@ -199,9 +199,34 @@ void crt_filter_video_render(retro_effects_filter_data_t *data)
 		return;
 	}
 	crt_filter_render_crt_mask(data);
-	crt_filter_render_blur(data);
+	//crt_filter_render_blur(data);
+	if (filter->bloom_intensity > 0.00001)
+		crt_filter_render_bloom(data);
 	crt_filter_render_composite(data);
 }
+
+static void crt_filter_render_bloom(retro_effects_filter_data_t* data)
+{
+	base_filter_data_t *base = data->base;
+	crt_filter_data_t *filter = data->active_filter_data;
+
+	gs_texture_t *image =
+		gs_texrender_get_texture(filter->phospher_mask_texrender);
+
+	data->bloom_data->brightness_threshold = filter->bloom_threshold;
+	data->bloom_data->bloom_intensity = filter->bloom_intensity;
+	data->bloom_data->bloom_size = filter->bloom_size;
+	data->bloom_data->levels.x = 0.299f;
+	data->bloom_data->levels.y = 0.587f;
+	data->bloom_data->levels.z = 0.114f;
+
+	bloom_render(image, data->bloom_data);
+
+	gs_texrender_t *tmp = filter->phospher_mask_texrender;
+	filter->phospher_mask_texrender = data->bloom_data->output;
+	data->bloom_data->output = tmp;
+}
+
 
 static void crt_filter_render_crt_mask(retro_effects_filter_data_t* data)
 {
@@ -283,11 +308,10 @@ static void crt_filter_render_composite(retro_effects_filter_data_t* data)
 	crt_filter_data_t *filter = data->active_filter_data;
 
 	gs_texture_t *image = gs_texrender_get_texture(filter->phospher_mask_texrender);
-	gs_texture_t *blur_image = gs_texrender_get_texture(data->blur_data->blur_output);
 
 	gs_effect_t *effect = filter->effect_crt_composite;
 
-	if (!effect || !image || !blur_image) {
+	if (!effect || !image) {
 		return;
 	}
 
@@ -296,15 +320,6 @@ static void crt_filter_render_composite(retro_effects_filter_data_t* data)
 
 	if (filter->param_image_composite) {
 		gs_effect_set_texture(filter->param_image_composite, image);
-	}
-
-	if (filter->param_blur_image_composite) {
-		gs_effect_set_texture(filter->param_blur_image_composite, blur_image);
-	}
-
-	if (filter->param_brightness_composite) {
-		gs_effect_set_float(filter->param_brightness_composite,
-				    filter->brightness);
 	}
 
 	if (filter->param_black_level_composite) {

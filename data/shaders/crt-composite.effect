@@ -1,12 +1,10 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
-uniform texture2d blur_image;
-uniform float brightness;
 uniform float black_level;
 uniform float white_level;
 uniform float dist;
 
-#define EPS 1.e-8
+#define EPS 1.e-3
 
 sampler_state textureSampler{
     Filter = Linear;
@@ -44,13 +42,6 @@ float4 mainImage(VertData v_in) : TARGET
 	float aa_mask = d < 0.49 ? smoothstep(-0.7, 0.7, (abs(frac(d - 0.25) - 0.5) - 0.25) / w) : 1.0;
 
 	float4 color = image.Sample(textureSampler, uv);
-	float4 blur_color = blur_image.Sample(textureSampler, uv);
-	// Brightness correction on bloom/blur layer
-	//blur_color.rgb *= brightness;
-	float threshold = brightness;
-	float4 highlight = saturate(blur_color - threshold) * 1.0 / (1.0 - threshold);
-	// Screen Blending between main color layer and bloom/blur layer
-	color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - highlight.rgb);
 	// Apply black/white levels correction
 	color.rgb = saturate((color.rgb - black_level) / (white_level - black_level));
 	// Apply barrel disortion anti-alias mask to alpha channel
