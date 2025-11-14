@@ -115,7 +115,7 @@ void bloom_f_filter_properties(retro_effects_filter_data_t *data,
 	p = obs_properties_add_float_slider(
 		props, "bloom_size",
 		obs_module_text("RetroEffects.Bloom.Size"), 0.0, 100.0,
-		0.01);
+		1.0);
 	obs_property_float_set_suffix(p, "px");
 
 	p = obs_properties_add_float_slider(

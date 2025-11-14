@@ -30,8 +30,9 @@ struct crt_filter_data {
 	bool loading_effect;
 	bool reload_effect;
 
-	float brightness;
-	float bloom;
+	float bloom_threshold;
+	float bloom_size;
+	float bloom_intensity;
 	float mask_intensity;
 	int phosphor_type;
 
@@ -61,4 +62,5 @@ static void crt_composite_load_effect(crt_filter_data_t *filter);
 
 static void crt_filter_render_crt_mask(retro_effects_filter_data_t *data);
 static void crt_filter_render_blur(retro_effects_filter_data_t *data);
+static void crt_filter_render_bloom(retro_effects_filter_data_t *data);
 static void crt_filter_render_composite(retro_effects_filter_data_t *data);
