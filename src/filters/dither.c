@@ -5,12 +5,12 @@ void dither_create(retro_effects_filter_data_t *filter)
 {
 	dither_filter_data_t *data = bzalloc(sizeof(dither_filter_data_t));
 	filter->active_filter_data = data;
-	data->reload_effect = false;
+	data->reload_effect = true;
 	dither_set_functions(filter);
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	dither_filter_defaults(settings);
+	dither_filter_update(filter, settings);
 	obs_data_release(settings);
-	dither_load_effect(data);
 }
 
 void dither_destroy(retro_effects_filter_data_t *filter)
