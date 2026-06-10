@@ -82,7 +82,7 @@ float4 mainImage(VertData v_in) : TARGET
 	// Split YIQ into portions of the NTSC signal:
 	// ntsc.x is luminance signal
 	// ntsc.y is color wave amplitude (Saturation), which is the length of the IQ vector
-	// ntsc.y is the color wave phase shift (hue), which is the angle of the IQ line	
+	// ntsc.z is the color wave phase shift (hue), which is the angle of the IQ line	
 	float saturation = length(yiq.yz);
 	float phase_shift = (atan2(yiq.z, yiq.y) + PI)/TAU;
 	float3 ntsc = float3(yiq.x, saturation, phase_shift);
