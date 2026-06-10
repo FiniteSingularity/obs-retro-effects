@@ -5,12 +5,14 @@ uniform float2 uv_size;
 uniform float luma_band_size;
 uniform float luma_band_strength;
 uniform int luma_band_count;
+uniform float luma_band_asymmetry;
 
 uniform float chroma_bleed_size;
 uniform int chroma_bleed_steps;
 uniform float chroma_bleed_strength;
 uniform float chroma_bleed_saturation;
 uniform float chroma_bleed_hue_shift;
+uniform float chroma_bleed_directionality;
 
 uniform float dot_crawl_speed;
 uniform float dot_crawl_amount;
@@ -35,8 +37,8 @@ float3 yiq2rgb(float3 c) {
 
 float decay_wave(float x, float cycles)
 {
-	float x2 = x * PI * cycles;
-	return cos(x2) * (1.0 - x);
+	float env = (1.0 - x) * (1.0 - x);
+	return cos(x * PI * cycles) * env;
 }
 
 float2 chroma_iq(float2 yz)
@@ -79,7 +81,12 @@ float4 mainImage(VertData v_in) : TARGET
 	// Samples surrounding pixels, and applies decaying wave
 	// convolution to generate luma bands around high contrast areas.
 
-	// Sample current pixel luma value, with weight 1.0
+	// luma_band_asymmetry: 0 = symmetric (current look), 1 = fully causal/trailing
+	
+	// Echo lands opposite the boosted tap, so to trail RIGHT we weight the LEFT taps more.
+	float w_right = 1.0 + luma_band_asymmetry; // -> applied to l2 (coord - i): echo trails RIGHT
+	float w_left = 1.0 - luma_band_asymmetry; // -> applied to l1 (coord + i)
+	
 	float luma_band = ntsc.x;
 	float luma_coef_sum = 1.0;
 	for (int i = 1; i <= luma_band_size; i++)
@@ -90,9 +97,9 @@ float4 mainImage(VertData v_in) : TARGET
 		float l2 = image.Sample(textureSampler, (coord - step) / uv_size).x;
 		// Get sample weight from decaying cos wave function
 		float coef = decay_wave(float(i) / luma_band_size, luma_band_count);
-		luma_coef_sum += coef * 2.0;
+		luma_coef_sum += coef * (w_left + w_right);
 		// Sum samples * their weight.
-		luma_band += (l1 + l2) * coef;
+		luma_band += (l1 * w_left + l2 * w_right) * coef;
 	}
 	// Normalize weighted sum by sum of weights used.
 	luma_band /= luma_coef_sum;
@@ -102,29 +109,32 @@ float4 mainImage(VertData v_in) : TARGET
 	// *** Chroma Bleed *** (averaged in I/Q vector space, wrap-safe)
 	// Switched to I/Q space to avoid phase wrap issues when sampling neighboring pixels
 	// Use a smoothstep convolution to sample surrounding pixels.
-
 	float2 iq_center = ntsc.y * float2(cos(ntsc.z), sin(ntsc.z));
-	
-	// Sample current pixel chroma values with weight 1.0
-	float chroma_coef_sum = 1.0;
+
+	float chroma_coef_sum = 1.0; // center anchored at weight 1.0
 	float2 chroma_bleed = iq_center;
 	float step_size = chroma_bleed_size / float(chroma_bleed_steps);
 	for (int i = 1; i <= chroma_bleed_steps; i++)
 	{
 		float2 step = float2(float(i) * step_size, 0.0);
-		// .x = magnitude, .y = phase (normalized 0..1)
 		float2 c1 = image.Sample(textureSampler, (coord + step) / uv_size).yz;
 		float2 c2 = image.Sample(textureSampler, (coord - step) / uv_size).yz;
-		// Denormalize phase 0..1 -> -PI..PI
 		c1.y = c1.y * TAU - PI;
 		c2.y = c2.y * TAU - PI;
-		// Convert each neighbor to its I/Q vector
 		float2 v1 = c1.x * float2(cos(c1.y), sin(c1.y));
 		float2 v2 = c2.x * float2(cos(c2.y), sin(c2.y));
 
 		float coef = smoothstep(0.0, 1.0, 1.0 - float(i) / float(chroma_bleed_steps));
-		chroma_coef_sum += coef * 2.0;
-		chroma_bleed += (v1 + v2) * coef;
+
+	// Weight each neighbor by its OWN chroma, never by a comparison to the
+	// center. Neutral neighbors get ~0 weight (can't desaturate us); saturated
+	// neighbors get full weight (bleed into us). No center_mag reference ->
+	// no iso-saturation contours -> no banding.
+		float w1 = coef * pow(max(c1.x, 1e-5), chroma_bleed_directionality);
+		float w2 = coef * pow(max(c2.x, 1e-5), chroma_bleed_directionality);
+
+		chroma_coef_sum += w1 + w2;
+		chroma_bleed += v1 * w1 + v2 * w2;
 	}
 	chroma_bleed /= chroma_coef_sum;
 

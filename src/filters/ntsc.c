@@ -42,9 +42,16 @@ void ntsc_unset_settings(retro_effects_filter_data_t* filter)
 	obs_data_unset_user_value(settings, "ntsc_luma_band_size");
 	obs_data_unset_user_value(settings, "ntsc_luma_band_strength");
 	obs_data_unset_user_value(settings, "ntsc_luma_band_count");
+	obs_data_unset_user_value(settings, "ntsc_luma_band_trail");
 	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_size");
 	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_strength");
 	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_steps");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_directionality");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_over_saturation");
+	obs_data_unset_user_value(settings, "ntsc_chroma_bleed_hue_shift");
+	obs_data_unset_user_value(settings, "ntsc_dot_crawl_speed");
+	obs_data_unset_user_value(settings, "ntsc_dot_crawl_amount");
+	obs_data_unset_user_value(settings, "ntsc_comb_filter_strength");
 	obs_data_unset_user_value(settings, "ntsc_brightness");
 	obs_data_unset_user_value(settings, "ntsc_saturation");
 	obs_data_release(settings);
@@ -62,6 +69,8 @@ void ntsc_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 		(float)obs_data_get_double(settings, "ntsc_luma_band_strength")/400.0f;
 	filter->luma_band_count =
 		(int)obs_data_get_int(settings, "ntsc_luma_band_count") * 2 + 1;
+	filter->luma_band_asymmetry =
+		(float)obs_data_get_double(settings, "ntsc_luma_band_trail") / 100.0f;
 
 	filter->chroma_bleed_size =
 		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_size");
@@ -69,6 +78,8 @@ void ntsc_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_strength") / 100.0f;
 	filter->chroma_bleed_steps =
 		(int)obs_data_get_int(settings, "ntsc_chroma_bleed_steps");
+	filter->chroma_bleed_directionality = (float)obs_data_get_double(
+		settings, "ntsc_chroma_bleed_directionality") / 100.0f;
 	filter->chroma_bleed_saturation =
 		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_over_saturation") / 100.0f + 1.0f;
 	filter->chroma_bleed_hue_shift = (float)obs_data_get_double(
@@ -93,6 +104,7 @@ void ntsc_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "ntsc_luma_noise", 0.0);
 	obs_data_set_default_double(settings, "ntsc_luma_band_size", 10.0);
 	obs_data_set_default_double(settings, "ntsc_luma_band_strength", 70.0);
+	obs_data_set_default_double(settings, "ntsc_luma_band_trail", 100.0);
 	obs_data_set_default_int(settings, "ntsc_luma_band_count", 1);
 
 	obs_data_set_default_double(settings, "ntsc_chroma_bleed_size", 50.0);
@@ -100,6 +112,7 @@ void ntsc_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_int(settings, "ntsc_chroma_bleed_steps", 15);
 	obs_data_set_default_double(settings, "ntsc_chroma_bleed_over_saturation", 0.0);
 	obs_data_set_default_double(settings, "ntsc_chroma_bleed_hue_shift", 0.0);
+	obs_data_set_default_double(settings, "ntsc_chroma_bleed_directionality", 100.0);
 
 	obs_data_set_default_double(settings, "ntsc_brightness", 100.0);
 	obs_data_set_default_double(settings, "ntsc_saturation", 100.0);
@@ -144,6 +157,12 @@ void ntsc_filter_properties(retro_effects_filter_data_t *data,
 		obs_module_text("RetroEffects.NTSC.LumaBandCount"), 1,
 		8, 1);
 
+	obs_properties_add_float_slider(
+		luma_settings, "ntsc_luma_band_trail",
+		obs_module_text("RetroEffects.NTSC.LumaBandTrail"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+
 	obs_properties_add_group(
 		props, "ntsc_luma_settings",
 		obs_module_text("RetroEffects.NTSC.Luma"),
@@ -165,6 +184,11 @@ void ntsc_filter_properties(retro_effects_filter_data_t *data,
 		chroma_settings, "ntsc_chroma_bleed_strength",
 		obs_module_text("RetroEffects.NTSC.ChromaBleedStrength"), 0.0,
 		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		chroma_settings, "ntsc_chroma_bleed_directionality",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedDirectionality"), 0.0, 100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
 	p = obs_properties_add_float_slider(
@@ -343,6 +367,10 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_int(filter->param_decode_luma_band_count,
 				    filter->luma_band_count);
 	}
+	if (filter->param_decode_luma_band_asymmetry) {
+		gs_effect_set_float(filter->param_decode_luma_band_asymmetry,
+				    filter->luma_band_asymmetry);
+	}
 
 	if (filter->param_decode_chroma_bleed_size) {
 		gs_effect_set_float(filter->param_decode_chroma_bleed_size,
@@ -355,6 +383,10 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 	if (filter->param_decode_chroma_bleed_steps) {
 		gs_effect_set_int(filter->param_decode_chroma_bleed_steps,
 				  filter->chroma_bleed_steps);
+	}
+	if (filter->param_decode_chroma_bleed_directionality) {
+		gs_effect_set_float(filter->param_decode_chroma_bleed_directionality,
+				  filter->chroma_bleed_directionality);
 	}
 	if (filter->param_decode_chroma_bleed_saturation) {
 		gs_effect_set_float(filter->param_decode_chroma_bleed_saturation,
@@ -546,6 +578,8 @@ static void ntsc_load_effect_decode(ntsc_filter_data_t *filter)
 				filter->param_decode_luma_band_strength = param;
 			} else if (strcmp(info.name, "luma_band_count") == 0) {
 				filter->param_decode_luma_band_count = param;
+			} else if (strcmp(info.name, "luma_band_asymmetry") == 0) {
+				filter->param_decode_luma_band_asymmetry = param;
 			} else if (strcmp(info.name, "chroma_bleed_size") == 0) {
 				filter->param_decode_chroma_bleed_size = param;
 			} else if (strcmp(info.name, "chroma_bleed_strength") == 0) {
@@ -556,6 +590,8 @@ static void ntsc_load_effect_decode(ntsc_filter_data_t *filter)
 				filter->param_decode_chroma_bleed_saturation = param;
 			} else if (strcmp(info.name, "chroma_bleed_hue_shift") == 0) {
 				filter->param_decode_chroma_bleed_hue_shift = param;
+			} else if (strcmp(info.name, "chroma_bleed_directionality") == 0) {
+				filter->param_decode_chroma_bleed_directionality = param;
 			} else if (strcmp(info.name, "dot_crawl_speed") == 0) {
 				filter->param_decode_dot_crawl_speed = param;
 			} else if (strcmp(info.name, "dot_crawl_amount") == 0) {

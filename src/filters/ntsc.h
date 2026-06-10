@@ -22,11 +22,13 @@ struct ntsc_filter_data {
 	gs_eparam_t *param_decode_luma_band_size;
 	gs_eparam_t *param_decode_luma_band_strength;
 	gs_eparam_t *param_decode_luma_band_count;
+	gs_eparam_t *param_decode_luma_band_asymmetry;
 	gs_eparam_t *param_decode_chroma_bleed_size;
 	gs_eparam_t *param_decode_chroma_bleed_strength;
 	gs_eparam_t *param_decode_chroma_bleed_steps;
 	gs_eparam_t *param_decode_chroma_bleed_saturation;
 	gs_eparam_t *param_decode_chroma_bleed_hue_shift;
+	gs_eparam_t *param_decode_chroma_bleed_directionality;
 	gs_eparam_t *param_decode_dot_crawl_speed;
 	gs_eparam_t *param_decode_dot_crawl_amount;
 	gs_eparam_t *param_decode_comb_filter_strength;
@@ -43,12 +45,14 @@ struct ntsc_filter_data {
 	float luma_noise;
 	float luma_band_size;
 	float luma_band_strength;
+	float luma_band_asymmetry;
 	int luma_band_count;
 	float chroma_bleed_size;
 	float chroma_bleed_strength;
 	int chroma_bleed_steps;
 	float chroma_bleed_saturation;
 	float chroma_bleed_hue_shift;
+	float chroma_bleed_directionality;
 	float dot_crawl_speed;
 	float dot_crawl_amount;
 	float comb_filter_strength;
