@@ -1,12 +1,22 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
 uniform float2 uv_size;
+
 uniform float luma_band_size;
 uniform float luma_band_strength;
 uniform int luma_band_count;
+
 uniform float chroma_bleed_size;
 uniform int chroma_bleed_steps;
 uniform float chroma_bleed_strength;
+uniform float chroma_bleed_saturation;
+uniform float chroma_bleed_hue_shift;
+
+uniform float dot_crawl_speed;
+uniform float dot_crawl_amount;
+uniform float comb_filter_strength;
+
+uniform float elapsed_time;
 
 uniform float saturation;
 uniform float brightness;
@@ -27,6 +37,12 @@ float decay_wave(float x, float cycles)
 {
 	float x2 = x * PI * cycles;
 	return cos(x2) * (1.0 - x);
+}
+
+float2 chroma_iq(float2 yz)
+{
+	float ph = yz.y * TAU - PI;
+	return yz.x * float2(cos(ph), sin(ph));
 }
 
 sampler_state textureSampler{
@@ -83,47 +99,78 @@ float4 mainImage(VertData v_in) : TARGET
 	// Apply luma_band value scaled by luma_band_strength value
 	ntsc.x = (1.0 - luma_band_strength) * ntsc.x + luma_band_strength * luma_band;
 
-	// *** Chroma Bleeding ***
-	// Same concept as luma banding, but applied to chroma values.
+	// *** Chroma Bleed *** (averaged in I/Q vector space, wrap-safe)
+	// Switched to I/Q space to avoid phase wrap issues when sampling neighboring pixels
 	// Use a smoothstep convolution to sample surrounding pixels.
 
+	float2 iq_center = ntsc.y * float2(cos(ntsc.z), sin(ntsc.z));
+	
 	// Sample current pixel chroma values with weight 1.0
 	float chroma_coef_sum = 1.0;
-	float2 chroma_bleed = float2(ntsc.yz);
+	float2 chroma_bleed = iq_center;
 	float step_size = chroma_bleed_size / float(chroma_bleed_steps);
 	for (int i = 1; i <= chroma_bleed_steps; i++)
 	{
 		float2 step = float2(float(i) * step_size, 0.0);
-		// Sample the + and - step
+		// .x = magnitude, .y = phase (normalized 0..1)
 		float2 c1 = image.Sample(textureSampler, (coord + step) / uv_size).yz;
 		float2 c2 = image.Sample(textureSampler, (coord - step) / uv_size).yz;
-		// Denormalize the phase angle
+		// Denormalize phase 0..1 -> -PI..PI
 		c1.y = c1.y * TAU - PI;
 		c2.y = c2.y * TAU - PI;
-		// Use smoothstep as convolution
+		// Convert each neighbor to its I/Q vector
+		float2 v1 = c1.x * float2(cos(c1.y), sin(c1.y));
+		float2 v2 = c2.x * float2(cos(c2.y), sin(c2.y));
+
 		float coef = smoothstep(0.0, 1.0, 1.0 - float(i) / float(chroma_bleed_steps));
 		chroma_coef_sum += coef * 2.0;
-		// Add weighted contribution to bleed
-		chroma_bleed += (c1 + c2) * coef;
+		chroma_bleed += (v1 + v2) * coef;
 	}
-	// Normalize weighted sum by weight coefficients
 	chroma_bleed /= chroma_coef_sum;
 
-	// Apply chroma bleed scaled by chroma_bleed_strength
-	ntsc.yz = (1.0 - chroma_bleed_strength) * ntsc.yz + chroma_bleed_strength * chroma_bleed;
+	// The fringe: how much neighbors shifted us away from our own chroma.
+	float2 delta = chroma_bleed - iq_center;
+
+	// Apply the character settings to the fringe ONLY.
+	delta *= chroma_bleed_saturation; // oversaturate the fringe
+
+	float bs, bc;
+	sincos(chroma_bleed_hue_shift, bs, bc); // rotate the fringe's hue
+	delta = float2(delta.x * bc - delta.y * bs,
+	               delta.x * bs + delta.y * bc);
+
+	float2 bled = iq_center + delta;
+	float2 iq = lerp(iq_center, bled, chroma_bleed_strength);
+	
+	// *** Dot Crawl ***
+	// A comb decoder cancels the chroma subcarrier in luma wherever chroma matches
+	// line-to-line, so dots only survive at vertical chroma edges. The residual left
+	// in luma is the line-to-line chroma difference projected onto the carrier.
+	// Flat color -> difference ~0 -> no dots. Edge -> dots that crawl with time.
+	float2 iq_left = chroma_iq(image.Sample(textureSampler, (coord - float2(1.0, 0.0)) / uv_size).yz);
+	float2 comb_residual = iq_center - iq_left; // perfect comb: only edges leak
+	// comb_filter_strength: 1 = comb (dots at edges only), 0 = notch (dots wherever chroma exists)
+	float2 gate = lerp(iq_center, comb_residual, comb_filter_strength);
+	
+	// Carrier: fine horizontal dots, but sub-Nyquist vertical so the pattern
+	// crawls (translates) over time instead of amplitude-modulating (blinking).
+	float carrier = PI * coord.x                        // fine horizontal dots
+	               + 2.25 * coord.y                     // sub-Nyquist vertical -> can crawl
+	               + elapsed_time * dot_crawl_speed;    // continuous vertical crawl
+
+	// Leaked residual = line-to-line chroma difference projected onto the carrier.
+	float residual = 0.5 * (gate.x * cos(carrier) + gate.y * sin(carrier));
+	ntsc.x += dot_crawl_amount * residual;
 
 	// Apply receiver brightness and saturation adjustments.
 	ntsc.x *= brightness;
-	ntsc.y *= saturation;
+	iq *= saturation;
 	
 	// Reconstruct yiq values from ntsc luminance (.x), iq length (.y), and phase angle (.z).
 	// Luminance passes through as Y
 	// I = cos(phase)*iq_length
 	// Q = sin(phase)*iq_length
-	float sz;
-	float cz;
-	sincos(ntsc.z, sz, cz);
-	float3 yiq = ntsc.xyy * float3(1.0, cz, sz);
+	float3 yiq = float3(ntsc.x, iq.x, iq.y);
 
 	// Convert YIQ to RGB and return.  Alpha is passed through from original source.
 	return float4(yiq2rgb(yiq), ntsc.a);

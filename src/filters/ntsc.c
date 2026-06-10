@@ -5,6 +5,7 @@ void ntsc_create(retro_effects_filter_data_t *filter)
 {
 	ntsc_filter_data_t *data = bzalloc(sizeof(ntsc_filter_data_t));
 	filter->active_filter_data = data;
+	data->elapsed_time = 0.0f;
 	ntsc_set_functions(filter);
 	obs_data_t *settings = obs_source_get_settings(filter->base->context);
 	ntsc_filter_defaults(settings);
@@ -68,6 +69,20 @@ void ntsc_filter_update(retro_effects_filter_data_t *data, obs_data_t *settings)
 		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_strength") / 100.0f;
 	filter->chroma_bleed_steps =
 		(int)obs_data_get_int(settings, "ntsc_chroma_bleed_steps");
+	filter->chroma_bleed_saturation =
+		(float)obs_data_get_double(settings, "ntsc_chroma_bleed_over_saturation") / 100.0f + 1.0f;
+	filter->chroma_bleed_hue_shift = (float)obs_data_get_double(
+		settings, "ntsc_chroma_bleed_hue_shift") * M_PI / 180.0f;
+
+	filter->dot_crawl_amount =
+		(float)obs_data_get_double(settings, "ntsc_dot_crawl_amount") /
+		100.0f;
+	filter->dot_crawl_speed =
+		12.0f * (float)obs_data_get_double(settings, "ntsc_dot_crawl_speed") /
+		100.0f;
+	filter->comb_filter_strength =
+		(float)obs_data_get_double(settings, "ntsc_comb_filter_strength") /
+		100.0f;
 
 	filter->brightness = (float)obs_data_get_double(settings, "ntsc_brightness") / 100.0f;
 	filter->saturation = (float)obs_data_get_double(settings, "ntsc_saturation") / 100.0f;
@@ -83,9 +98,15 @@ void ntsc_filter_defaults(obs_data_t *settings) {
 	obs_data_set_default_double(settings, "ntsc_chroma_bleed_size", 50.0);
 	obs_data_set_default_double(settings, "ntsc_chroma_bleed_strength", 70.0);
 	obs_data_set_default_int(settings, "ntsc_chroma_bleed_steps", 15);
+	obs_data_set_default_double(settings, "ntsc_chroma_bleed_over_saturation", 0.0);
+	obs_data_set_default_double(settings, "ntsc_chroma_bleed_hue_shift", 0.0);
 
 	obs_data_set_default_double(settings, "ntsc_brightness", 100.0);
 	obs_data_set_default_double(settings, "ntsc_saturation", 100.0);
+
+	obs_data_set_default_double(settings, "ntsc_dot_crawl_speed", 50.0);
+	obs_data_set_default_double(settings, "ntsc_dot_crawl_amount", 50.0);
+	obs_data_set_default_double(settings, "ntsc_comb_filter_strength", 100.0);
 }
 
 void ntsc_filter_properties(retro_effects_filter_data_t *data,
@@ -146,9 +167,43 @@ void ntsc_filter_properties(retro_effects_filter_data_t *data,
 		100.0, 0.1);
 	obs_property_float_set_suffix(p, "%");
 
+	p = obs_properties_add_float_slider(
+		chroma_settings, "ntsc_chroma_bleed_over_saturation",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedOverSaturation"), 0.0,
+		100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		chroma_settings, "ntsc_chroma_bleed_hue_shift",
+		obs_module_text("RetroEffects.NTSC.ChromaBleedHueShift"), -180.0,
+		180.0, 0.1);
+	obs_property_float_set_suffix(p, "deg");
+
 	obs_properties_add_group(props, "ntsc_chroma_settings",
 		obs_module_text("RetroEffects.NTSC.Chroma"),
 		OBS_GROUP_NORMAL, chroma_settings);
+
+	obs_properties_t *dotcrawl_settings = obs_properties_create();
+
+	p = obs_properties_add_float_slider(
+		dotcrawl_settings, "ntsc_dot_crawl_speed",
+		obs_module_text("RetroEffects.NTSC.DotCrawl.Speed"), 0.0, 100.0,
+		0.1);
+
+	p = obs_properties_add_float_slider(
+		dotcrawl_settings, "ntsc_dot_crawl_amount",
+		obs_module_text("RetroEffects.NTSC.DotCrawl.Amount"), 0.0, 100.0,
+		0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	p = obs_properties_add_float_slider(
+		dotcrawl_settings, "ntsc_comb_filter_strength",
+		obs_module_text("RetroEffects.NTSC.CombFilterStrength"), 0.0, 100.0, 0.1);
+	obs_property_float_set_suffix(p, "%");
+
+	obs_properties_add_group(props, "ntsc_dotcrawl_settings",
+		obs_module_text("RetroEffects.NTSC.DotCrawl"),
+				 OBS_GROUP_NORMAL, dotcrawl_settings);
 
 	obs_properties_t *picture_adjustment = obs_properties_create();
 
@@ -171,19 +226,23 @@ void ntsc_filter_properties(retro_effects_filter_data_t *data,
 
 void ntsc_filter_video_tick(retro_effects_filter_data_t *data, float seconds)
 {
-	UNUSED_PARAMETER(seconds);
 	ntsc_filter_data_t *filter = data->active_filter_data;
 
 	float height = (float)data->base->height * 1.10f;
 	if (filter->tuning_offset <= 20.0f) {
 		filter->y_offset = floorf(filter->y_offset / 1.8f);
-		return;
+	} else {
+		float y_increment =
+			(filter->tuning_offset - 20.0f) * ((height) / 400.0f);
+		filter->y_offset += y_increment;
+		filter->y_offset = fmodf(filter->y_offset, height);
 	}
 
-	float y_increment =
-		(filter->tuning_offset-20.0f) * ((height) / 400.0f);
-	filter->y_offset += y_increment;
-	filter->y_offset = fmodf(filter->y_offset, height);
+	filter->elapsed_time += seconds;
+
+	// Reset elapsed time if it gets too high to avoid floating point precision issues in the shader.
+	filter->elapsed_time =
+		filter->elapsed_time > 1.0e6f ? 0.0f : filter->elapsed_time;
 }
 
 void ntsc_filter_video_render(retro_effects_filter_data_t *data)
@@ -297,6 +356,26 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_int(filter->param_decode_chroma_bleed_steps,
 				  filter->chroma_bleed_steps);
 	}
+	if (filter->param_decode_chroma_bleed_saturation) {
+		gs_effect_set_float(filter->param_decode_chroma_bleed_saturation,
+				  filter->chroma_bleed_saturation);
+	}
+	if (filter->param_decode_chroma_bleed_hue_shift) {
+		gs_effect_set_float(filter->param_decode_chroma_bleed_hue_shift,
+				  filter->chroma_bleed_hue_shift);
+	}
+	if (filter->param_decode_dot_crawl_speed) {
+		gs_effect_set_float(filter->param_decode_dot_crawl_speed,
+				  filter->dot_crawl_speed);
+	}
+	if (filter->param_decode_dot_crawl_amount) {
+		gs_effect_set_float(filter->param_decode_dot_crawl_amount,
+				  filter->dot_crawl_amount);
+	}
+	if (filter->param_decode_comb_filter_strength) {
+		gs_effect_set_float(filter->param_decode_comb_filter_strength,
+				  filter->comb_filter_strength);
+	}
 	if (filter->param_decode_brightness) {
 		gs_effect_set_float(filter->param_decode_brightness,
 				    filter->brightness);
@@ -304,6 +383,10 @@ void ntsc_filter_video_render(retro_effects_filter_data_t *data)
 	if (filter->param_decode_chroma_bleed_steps) {
 		gs_effect_set_float(filter->param_decode_saturation,
 				  filter->saturation);
+	}
+	if (filter->param_decode_elapsed_time) {
+		gs_effect_set_float(filter->param_decode_elapsed_time,
+				    filter->elapsed_time);
 	}
 
 	set_render_parameters();
@@ -469,10 +552,22 @@ static void ntsc_load_effect_decode(ntsc_filter_data_t *filter)
 				filter->param_decode_chroma_bleed_strength = param;
 			} else if (strcmp(info.name, "chroma_bleed_steps") == 0) {
 				filter->param_decode_chroma_bleed_steps = param;
-			} else if (strcmp(info.name, "brightness") == 0) {
+			} else if (strcmp(info.name, "chroma_bleed_saturation") == 0) {
+				filter->param_decode_chroma_bleed_saturation = param;
+			} else if (strcmp(info.name, "chroma_bleed_hue_shift") == 0) {
+				filter->param_decode_chroma_bleed_hue_shift = param;
+			} else if (strcmp(info.name, "dot_crawl_speed") == 0) {
+				filter->param_decode_dot_crawl_speed = param;
+			} else if (strcmp(info.name, "dot_crawl_amount") == 0) {
+				filter->param_decode_dot_crawl_amount = param;
+			} else if (strcmp(info.name, "comb_filter_strength") == 0) {
+				filter->param_decode_comb_filter_strength = param;
+			}  else if (strcmp(info.name, "brightness") == 0) {
 				filter->param_decode_brightness = param;
 			} else if (strcmp(info.name, "saturation") == 0) {
 				filter->param_decode_saturation = param;
+			} else if (strcmp(info.name, "elapsed_time") == 0) {
+				filter->param_decode_elapsed_time = param;
 			}
 		}
 	}

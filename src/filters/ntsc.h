@@ -25,8 +25,15 @@ struct ntsc_filter_data {
 	gs_eparam_t *param_decode_chroma_bleed_size;
 	gs_eparam_t *param_decode_chroma_bleed_strength;
 	gs_eparam_t *param_decode_chroma_bleed_steps;
+	gs_eparam_t *param_decode_chroma_bleed_saturation;
+	gs_eparam_t *param_decode_chroma_bleed_hue_shift;
+	gs_eparam_t *param_decode_dot_crawl_speed;
+	gs_eparam_t *param_decode_dot_crawl_amount;
+	gs_eparam_t *param_decode_comb_filter_strength;
+
 	gs_eparam_t *param_decode_brightness;
 	gs_eparam_t *param_decode_saturation;
+	gs_eparam_t *param_decode_elapsed_time;
 
 	bool loading_effect;
 
@@ -40,8 +47,16 @@ struct ntsc_filter_data {
 	float chroma_bleed_size;
 	float chroma_bleed_strength;
 	int chroma_bleed_steps;
+	float chroma_bleed_saturation;
+	float chroma_bleed_hue_shift;
+	float dot_crawl_speed;
+	float dot_crawl_amount;
+	float comb_filter_strength;
+
+
 	float brightness;
 	float saturation;
+	float elapsed_time;
 };
 
 extern void ntsc_create(retro_effects_filter_data_t *filter);
