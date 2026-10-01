@@ -6,7 +6,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(obs-retro-effects VERSION 1.0.2)
+project(obs-retro-effects VERSION 1.0.3)
 set(PROJECT_FULL_NAME "Retro Effects")
 
 # Set new UUIDs when you start to create a new plugin.
@@ -120,4 +120,25 @@ else()
         setup_plugin_target(${PROJECT_NAME})
     endif()
 endif()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
