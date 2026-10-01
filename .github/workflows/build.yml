@@ -191,7 +191,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        target: [x64, x86]
+        target: [x64]
         include:
           - target: x64
             cmake_build: "x64"
