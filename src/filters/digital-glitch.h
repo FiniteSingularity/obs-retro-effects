@@ -1,3 +1,5 @@
+#pragma once
+
 #include <obs-module.h>
 #include <util/darray.h>
 #include "../obs-retro-effects.h"

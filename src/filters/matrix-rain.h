@@ -1,5 +1,6 @@
+#pragma once
+
 #include <obs-module.h>
-#include <graphics/image-file.h>
 
 #include "../obs-retro-effects.h"
 #include "../blur/bloom.h"
@@ -36,7 +37,7 @@ struct matrix_rain_filter_data {
 	gs_eparam_t *param_active_rain_brightness;
 	gs_eparam_t *param_fade_distance;
 
-	gs_image_file_t *font_image;
+	gs_texture_t *font_texture;
 
 	obs_data_t *textures_data;
 

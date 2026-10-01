@@ -1,6 +1,6 @@
-#include <obs-module.h>
-#include <graphics/image-file.h>
+#pragma once
 
+#include <obs-module.h>
 #include "../obs-retro-effects.h"
 
 struct crt_filter_data;

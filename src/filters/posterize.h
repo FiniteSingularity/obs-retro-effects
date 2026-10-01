@@ -1,3 +1,5 @@
+#pragma once
+
 #include <obs-module.h>
 #include <util/dstr.h>
 
