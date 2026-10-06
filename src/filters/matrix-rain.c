@@ -31,9 +31,8 @@ void matrix_rain_destroy(retro_effects_filter_data_t *filter)
 		gs_effect_destroy(data->effect_matrix_rain);
 	}
 
-	if (data->font_image) {
-		gs_image_file_free(data->font_image);
-		bfree(data->font_image);
+	if (data->font_texture) {
+		gs_texture_destroy(data->font_texture);
 	}
 
 	if (data->textures_data) {
@@ -176,21 +175,34 @@ void matrix_rain_filter_update(retro_effects_filter_data_t *data,
 void set_character_texture(matrix_rain_filter_data_t *filter,
 			   const char *filename, float num_chars)
 {
-	if (filter->font_image == NULL) {
-		filter->font_image = bzalloc(sizeof(gs_image_file_t));
-	} else {
+	// if (filter->font_image == NULL) {
+	// 	filter->font_image = image_file_alloc();
+	// } else {
+	// 	obs_enter_graphics();
+	// 	image_file_free(filter->font_image);
+	// 	obs_leave_graphics();
+	// }
+	// if (filename) {
+	// 	image_file_init(filter->font_image, filename, GS_IMAGE_ALPHA_STRAIGHT);
+	// 	obs_enter_graphics();
+	// 	image_file_init_texture(filter->font_image);
+	// 	filter->font_texture_size.x = (float)gs_texture_get_width(
+	// 		filter->font_image->texture);
+	// 	filter->font_texture_size.y = (float)gs_texture_get_height(
+	// 		filter->font_image->texture);
+	// 	obs_leave_graphics();
+	// }
+	if (filter->font_texture) {
 		obs_enter_graphics();
-		gs_image_file_free(filter->font_image);
+		gs_texture_destroy(filter->font_texture);
+		filter->font_texture = NULL;
 		obs_leave_graphics();
 	}
 	if (filename) {
-		gs_image_file_init(filter->font_image, filename);
 		obs_enter_graphics();
-		gs_image_file_init_texture(filter->font_image);
-		filter->font_texture_size.x = (float)gs_texture_get_width(
-			filter->font_image->texture);
-		filter->font_texture_size.y = (float)gs_texture_get_height(
-			filter->font_image->texture);
+		filter->font_texture = gs_texture_create_from_file(filename);
+		filter->font_texture_size.x = (float)gs_texture_get_width(filter->font_texture);
+		filter->font_texture_size.y = (float)gs_texture_get_height(filter->font_texture);
 		obs_leave_graphics();
 	}
 	filter->font_num_chars = num_chars;
@@ -366,10 +378,10 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 	gs_texture_t *image = gs_texrender_get_texture(base->input_texrender);
 	gs_effect_t *effect = filter->effect_matrix_rain;
 
-	gs_texture_t *font_texture = NULL;
-	if (filter->font_image) {
-		font_texture = filter->font_image->texture;
-	}
+	// gs_texture_t *font_texture = NULL;
+	// if (filter->font_image) {
+	// 	font_texture = filter->font_image->texture;
+	// }
 
 	if (!effect || !image) {
 		return;
@@ -390,8 +402,11 @@ void matrix_rain_filter_video_render(retro_effects_filter_data_t *data)
 		gs_effect_set_texture(filter->param_image, image);
 	}
 
-	if (filter->param_font_image) {
-		gs_effect_set_texture(filter->param_font_image, font_texture);
+	// if (filter->param_font_image) {
+	// 	gs_effect_set_texture(filter->param_font_image, font_texture);
+	// }
+	if (filter->font_texture) {
+		gs_effect_set_texture(filter->param_font_image, filter->font_texture);
 	}
 
 	if (filter->param_font_texture_size) {
