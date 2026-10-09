@@ -3,7 +3,11 @@ param(
     [ValidateSet('x64')]
     [string] $Target = 'x64',
     [ValidateSet('Debug', 'RelWithDebInfo', 'Release', 'MinSizeRel')]
-    [string] $Configuration = 'RelWithDebInfo'
+    [string] $Configuration = 'RelWithDebInfo',
+    [switch] $Installer,
+    [ValidateSet('All', 'Modern', 'Legacy')]
+    [string] $InstallerVariant = 'All',
+    [switch] $SignCode
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,10 +15,6 @@ $ErrorActionPreference = 'Stop'
 if ( $DebugPreference -eq 'Continue' ) {
     $VerbosePreference = 'Continue'
     $InformationPreference = 'Continue'
-}
-
-if ( $env:CI -eq $null ) {
-    throw "Package-Windows.ps1 requires CI environment"
 }
 
 if ( ! ( [System.Environment]::Is64BitOperatingSystem ) ) {
@@ -47,48 +47,75 @@ function Package {
     $ProductName = $BuildSpec.name
     $ProductVersion = $BuildSpec.version
 
-    $OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
-    $OutputNameLegacy = "${ProductName}-${ProductVersion}-windows-legacy-${Target}"
-    $OutputNamePortableLegacy = "${ProductName}-${ProductVersion}-windows-portable-legacy-${Target}"
+    $StagingRoot = "${ProjectRoot}/release/${Configuration}"
+
+    $Archives = @(
+        @{
+            Label = 'OBS 33+'
+            StagingDir = "${StagingRoot}/${ProductName}"
+            OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
+        }
+        @{
+            Label = 'legacy'
+            StagingDir = "${StagingRoot}/${ProductName}_legacy"
+            OutputName = "${ProductName}-${ProductVersion}-windows-legacy-${Target}"
+        }
+        @{
+            Label = 'portable legacy'
+            StagingDir = "${StagingRoot}/${ProductName}_portable_legacy"
+            OutputName = "${ProductName}-${ProductVersion}-windows-portable-legacy-${Target}"
+        }
+    )
+
+    foreach ( $Archive in $Archives ) {
+        if ( ! ( Test-Path -Path $Archive.StagingDir ) ) {
+            throw "Staging directory '$($Archive.StagingDir)' not found. Run Build-Windows.ps1 -Configuration ${Configuration} first."
+        }
+    }
 
     $RemoveArgs = @{
         ErrorAction = 'SilentlyContinue'
         Path = @(
             "${ProjectRoot}/release/${ProductName}-*-windows-*.zip"
+            "${ProjectRoot}/release/${ProductName}-*-windows-*.msi"
         )
     }
 
     Remove-Item @RemoveArgs
 
-    Log-Group "Archiving ${ProductName}..."
-    $CompressArgs = @{
-        Path = (Get-ChildItem -Path "${ProjectRoot}/release/${Configuration}/${ProductName}" -Exclude "${OutputName}*.*")
-        CompressionLevel = 'Optimal'
-        DestinationPath = "${ProjectRoot}/release/${OutputName}.zip"
-        Verbose = ($Env:CI -ne $null)
+    if ( $SignCode ) {
+        Log-Group "Signing ${ProductName} binaries..."
+        $Binaries = Get-ChildItem -Path $StagingRoot -Recurse -Include '*.dll' | Select-Object -ExpandProperty FullName
+        Sign-WindowsFile -FilePath $Binaries
+        Log-Group
     }
-    Compress-Archive -Force @CompressArgs
-    Log-Group
 
-    Log-Group "Archiving ${ProductName} Legacy..."
-    $CompressArgs = @{
-        Path = (Get-ChildItem -Path "${ProjectRoot}/release/${Configuration}/${ProductName}_legacy" -Exclude "${OutputNameLegacy}*.*")
-        CompressionLevel = 'Optimal'
-        DestinationPath = "${ProjectRoot}/release/${OutputNameLegacy}.zip"
-        Verbose = ($Env:CI -ne $null)
+    foreach ( $Archive in $Archives ) {
+        Log-Group "Archiving ${ProductName} $($Archive.Label)..."
+        $CompressArgs = @{
+            Path = (Get-ChildItem -Path $Archive.StagingDir -Exclude "$($Archive.OutputName)*.*")
+            CompressionLevel = 'Optimal'
+            DestinationPath = "${ProjectRoot}/release/$($Archive.OutputName).zip"
+            Verbose = ($Env:CI -ne $null)
+        }
+        Compress-Archive -Force @CompressArgs
+        Log-Group
     }
-    Compress-Archive -Force @CompressArgs
-    Log-Group
 
-    Log-Group "Archiving ${ProductName} Portable Legacy..."
-    $CompressArgs = @{
-        Path = (Get-ChildItem -Path "${ProjectRoot}/release/${Configuration}/${ProductName}_portable_legacy" -Exclude "${OutputNamePortableLegacy}*.*")
-        CompressionLevel = 'Optimal'
-        DestinationPath = "${ProjectRoot}/release/${OutputNamePortableLegacy}.zip"
-        Verbose = ($Env:CI -ne $null)
+    if ( $Installer ) {
+        $InstallerArgs = @{
+            Target = $Target
+            Configuration = $Configuration
+            Variant = $InstallerVariant
+            SignCode = $SignCode
+        }
+
+        & "${ScriptHome}/Build-WindowsInstaller.ps1" @InstallerArgs
+
+        if ( $LASTEXITCODE -ne 0 ) {
+            throw "Build-WindowsInstaller.ps1 exited with code ${LASTEXITCODE}."
+        }
     }
-    Compress-Archive -Force @CompressArgs
-    Log-Group
 }
 
 Package

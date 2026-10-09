@@ -249,6 +249,10 @@ jobs:
           path: ${{ github.workspace }}/.ccache
           key: ${{ runner.os }}-${{ matrix.os }}-ccache-x86_64-${{ needs.check-event.outputs.config }}
 
+  # Windows is split in two: the compile runs on a hosted runner and hands its `cmake --install`
+  # output over as a temporary artifact; packaging (zips + MSIs) then runs either on the self-hosted
+  # runner that has the code-signing hardware token (pushes to this repo) or on a hosted runner
+  # without signing (pull requests, dispatches, schedules, forks).
   windows-build:
     name: Build for Windows 🪟
     runs-on: windows-2022
@@ -261,6 +265,31 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Build Plugin 🧱
+        uses: ./.github/actions/build-plugin
+        with:
+          target: x64
+          config: ${{ needs.check-event.outputs.config }}
+
+      - name: Upload Build Output for Packaging 📤
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmp-windows-x64-build
+          path: ${{ github.workspace }}/release/${{ needs.check-event.outputs.config }}
+          retention-days: 1
+          if-no-files-found: error
+
+  windows-package:
+    name: Package Windows (unsigned) 📀
+    if: github.event_name != 'push' || github.repository_owner != 'FiniteSingularity'
+    runs-on: windows-2022
+    needs: [check-event, windows-build]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set Up Environment 🔧
         id: setup
@@ -277,11 +306,11 @@ jobs:
           "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
           "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
 
-      - name: Build Plugin 🧱
-        uses: ./.github/actions/build-plugin
+      - name: Download Build Output 📥
+        uses: actions/download-artifact@v4
         with:
-          target: x64
-          config: ${{ needs.check-event.outputs.config }}
+          name: tmp-windows-x64-build
+          path: ${{ github.workspace }}/release/${{ needs.check-event.outputs.config }}
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
@@ -307,3 +336,79 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-portable-legacy-x64-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-portable-legacy-x64*.*
+
+      - name: Remove Temporary Artifacts 🧹
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: tmp-windows-x64-build
+
+  windows-package-signed:
+    name: Package Windows (signed) 📀
+    if: github.event_name == 'push' && github.repository_owner == 'FiniteSingularity'
+    runs-on: [self-hosted, Windows, X64]
+    needs: [check-event, windows-build]
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # Consumed by .github/scripts/utils.pwsh/Sign-WindowsFile.ps1 (never echoed to the log).
+      SIGNING_KEY_PIN: ${{ secrets.SIGNING_KEY_PIN }}
+      SIGNING_ORG: ${{ secrets.SIGNING_ORG }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Environment 🔧
+        id: setup
+        run: |
+          # Set Up Environment 🔧
+          if ( $Env:RUNNER_DEBUG -ne $null ) {
+            Set-PSDebug -Trace 1
+          }
+
+          $BuildSpec = Get-Content -Path buildspec.json -Raw | ConvertFrom-Json
+          $ProductName = $BuildSpec.name
+          $ProductVersion = $BuildSpec.version
+
+          "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
+          "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
+
+      - name: Download Build Output 📥
+        uses: actions/download-artifact@v4
+        with:
+          name: tmp-windows-x64-build
+          path: ${{ github.workspace }}/release/${{ needs.check-event.outputs.config }}
+
+      - name: Sign and Package Plugin 📀
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x64
+          config: ${{ needs.check-event.outputs.config }}
+          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+          signWindows: true
+
+      - name: Upload Main Artifact 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64*.*
+
+      - name: Upload Legacy Artifact 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-legacy-x64-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-legacy-x64*.*
+
+      - name: Upload Portable Legacy Artifact 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-portable-legacy-x64-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-portable-legacy-x64*.*
+
+      - name: Remove Temporary Artifacts 🧹
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: tmp-windows-x64-build
+
+      - name: Clean Up Runner Workspace 🧹
+        if: ${{ always() }}
+        run: Remove-Item -Path "${{ github.workspace }}/*" -Recurse -Force -ErrorAction SilentlyContinue

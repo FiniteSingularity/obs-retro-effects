@@ -40,6 +40,10 @@ inputs:
     description: Create Windows or macOS installation package
     required: false
     default: 'false'
+  signWindows:
+    description: Code-sign the Windows binaries and installers (Windows only)
+    required: false
+    default: 'false'
   workingDirectory:
     description: Working directory for packaging
     required: false
@@ -99,6 +103,7 @@ runs:
     - name: Run Windows Packaging
       if: runner.os == 'Windows'
       shell: pwsh
+      working-directory: ${{ inputs.workingDirectory }}
       run: |
         # Run Windows Packaging
         if ( $Env:RUNNER_DEBUG -ne $null ) {
@@ -108,6 +113,14 @@ runs:
         $PackageArgs = @{
           Target = '${{ inputs.target }}'
           Configuration = '${{ inputs.config }}'
+        }
+
+        if ( '${{ inputs.package }}' -eq 'true' ) {
+          $PackageArgs.Installer = $true
+        }
+
+        if ( '${{ inputs.signWindows }}' -eq 'true' ) {
+          $PackageArgs.SignCode = $true
         }
 
         .github/scripts/Package-Windows.ps1 @PackageArgs

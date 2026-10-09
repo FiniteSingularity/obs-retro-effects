@@ -13,10 +13,6 @@ if ( $DebugPreference -eq 'Continue' ) {
     $InformationPreference = 'Continue'
 }
 
-if ( $env:CI -eq $null ) {
-    throw "Build-Windows.ps1 requires CI environment"
-}
-
 if ( ! ( [System.Environment]::Is64BitOperatingSystem ) ) {
     throw "A 64-bit system is required to build the project."
 }
