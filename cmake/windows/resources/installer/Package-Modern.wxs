@@ -55,7 +55,6 @@
       <Directory Id="OBSROOT" Name="obs-studio" />
     </StandardDirectory>
 
-
     <CustomAction Id="SetScopeFromSaved" Property="INSTALLSCOPE" Value="[SAVED_INSTALLSCOPE]" />
     <CustomAction Id="SetScopeDefault" Property="INSTALLSCOPE" Value="global" />
     <CustomAction Id="SetObsRootFromSaved" Property="OBSROOT" Value="[SAVED_OBSROOT]" />
@@ -104,6 +103,18 @@
     </Component>
 
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+
+    <?ifdef var.BannerImage ?>
+      <WixVariable Id="WixUIBannerBmp" Value="$(var.BannerImage)" />
+    <?endif ?>
+    <?ifdef var.DialogImage ?>
+      <WixVariable Id="WixUIDialogBmp" Value="$(var.DialogImage)" />
+    <?endif ?>
+    <?ifdef var.ProductIcon ?>
+      <Icon Id="ProductIcon.ico" SourceFile="$(var.ProductIcon)" />
+      <Property Id="ARPPRODUCTICON" Value="ProductIcon.ico" />
+    <?endif ?>
+
     <UIRef Id="WixUI_ObsScope" />
   </Package>
 </Wix>

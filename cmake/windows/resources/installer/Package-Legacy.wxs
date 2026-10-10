@@ -57,7 +57,6 @@
       <ComponentRef Id="InstallState" />
     </Feature>
 
-    <!-- Everything the cmake install step staged for the portable legacy layout: obs-plugins\64bit\**, data\obs-plugins\<plugin>\** -->
     <ComponentGroup Id="PluginFiles" Directory="INSTALLFOLDER">
       <Files Include="$(var.StagingDir)\**" />
     </ComponentGroup>
@@ -70,6 +69,18 @@
     </Component>
 
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+
+    <?ifdef var.BannerImage ?>
+      <WixVariable Id="WixUIBannerBmp" Value="$(var.BannerImage)" />
+    <?endif ?>
+    <?ifdef var.DialogImage ?>
+      <WixVariable Id="WixUIDialogBmp" Value="$(var.DialogImage)" />
+    <?endif ?>
+    <?ifdef var.ProductIcon ?>
+      <Icon Id="ProductIcon.ico" SourceFile="$(var.ProductIcon)" />
+      <Property Id="ARPPRODUCTICON" Value="ProductIcon.ico" />
+    <?endif ?>
+
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
   </Package>
 </Wix>
