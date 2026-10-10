@@ -8,6 +8,7 @@
 !/data
 !/src
 !.clang-format
+!.config
 !.gersemirc
 !.gitignore
 !buildspec.json
