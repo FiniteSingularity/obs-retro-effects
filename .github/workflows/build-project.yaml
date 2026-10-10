@@ -278,7 +278,7 @@ jobs:
 
   windows-package:
     name: Package Windows (unsigned) 📀
-    if: false &&github.event_name != 'push' || github.repository_owner != 'FiniteSingularity'
+    if: ${{ !(github.event_name == 'push' && github.ref_type == 'tag') }}
     runs-on: windows-2022
     needs: [check-event, windows-build]
     defaults:
@@ -340,7 +340,8 @@ jobs:
 
   windows-package-signed:
     name: Package Windows (signed) 📀
-    if: github.event_name == 'push' || github.repository_owner == 'FiniteSingularity'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    environment: release-signing
     runs-on: [self-hosted, Windows, X64]
     needs: [check-event, windows-build]
     defaults:
