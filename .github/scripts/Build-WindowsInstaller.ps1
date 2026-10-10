@@ -81,10 +81,29 @@ function Build-Installer {
     $StagingRoot = "${ReleaseDir}\${Configuration}"
     $SourceDir = [System.IO.Path]::GetFullPath("${ProjectRoot}/cmake/windows/resources/installer")
 
+    #   banner.bmp  493 x 58 px   24-bit BMP
+    #   dialog.bmp  493 x 312 px  24-bit BMP
+    #   icon.ico    multi-size ICO
+    $BrandingDefines = @()
+    $BrandingFiles = @{
+        BannerImage = "${SourceDir}\images\banner.bmp"
+        DialogImage = "${SourceDir}\images\dialog.bmp"
+        ProductIcon = "${SourceDir}\images\icon.ico"
+    }
+
+    foreach ( $Branding in $BrandingFiles.GetEnumerator() ) {
+        if ( Test-Path -Path $Branding.Value ) {
+            $BrandingDefines += @('-d', "$($Branding.Key)=$($Branding.Value)")
+        } else {
+            Log-Warning "Branding file '$($Branding.Value)' not found, using the WiX default."
+        }
+    }
+
     $Installers = @()
 
     if ( $Variant -in 'All', 'Modern' ) {
         $Installers += @{
+            Key = 'modern'
             Label = 'OBS 33+'
             StagingDir = "${StagingRoot}\${ProductName}"
             OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
@@ -99,6 +118,7 @@ function Build-Installer {
 
     if ( $Variant -in 'All', 'Legacy' ) {
         $Installers += @{
+            Key = 'legacy'
             Label = 'legacy (pre-OBS 33)'
             StagingDir = "${StagingRoot}\${ProductName}_portable_legacy"
             OutputName = "${ProductName}-${ProductVersion}-windows-legacy-${Target}"
@@ -119,7 +139,6 @@ function Build-Installer {
 
     New-Item -ItemType Directory -Path $InstallerDir -Force | Out-Null
 
-    # wix caches extensions in .wix/extensions relative to the working directory.
     Push-Location -Stack InstallerTemp
     Set-Location -Path $ProjectRoot
 
@@ -144,7 +163,7 @@ function Build-Installer {
             'wix', 'build'
             '-arch', 'x64'
             '-ext', 'WixToolset.UI.wixext'
-            '-intermediateFolder', "${InstallerDir}\obj\$($Installer.OutputName)"
+            '-intermediateFolder', "${InstallerDir}\obj\$($Installer.Key)"
             '-pdbtype', 'none'
             '-d', "ProductName=${ProductName}"
             '-d', "ProductDisplayName=${ProductDisplayName}"
@@ -156,6 +175,8 @@ function Build-Installer {
             '-d', "LicenseRtf=${LicenseRtf}"
             '-o', $OutputFile
         )
+
+        $WixArgs += $BrandingDefines
 
         foreach ( $Localization in $Installer.Localization ) {
             $WixArgs += @('-loc', $Localization)
