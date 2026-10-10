@@ -59,7 +59,7 @@
 
     <!-- Everything the cmake install step staged for the portable legacy layout: obs-plugins\64bit\**, data\obs-plugins\<plugin>\** -->
     <ComponentGroup Id="PluginFiles" Directory="INSTALLFOLDER">
-      <Files Include="$(var.StageDir)\**" />
+      <Files Include="$(var.StagingDir)\**" />
     </ComponentGroup>
 
     <Component Id="InstallState" Directory="INSTALLFOLDER" Guid="F258B60D-3429-4C97-B9DD-2523EED28012" Bitness="always64">

@@ -91,7 +91,7 @@
     </Feature>
 
     <ComponentGroup Id="PluginFiles" Directory="PLUGINFOLDER">
-      <Files Include="$(var.StageDir)\**" />
+      <Files Include="$(var.StagingDir)\**" />
     </ComponentGroup>
 
     <Component Id="InstallState" Directory="PLUGINFOLDER" Guid="E2181D69-29EB-44CF-A7B0-3A521708D54E" Bitness="always64">
