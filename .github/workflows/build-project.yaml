@@ -222,7 +222,7 @@ jobs:
         with:
           target: x86_64
           config: ${{ needs.check-event.outputs.config }}
-          package: true
+          package: ${{ fromJSON(needs.check-event.outputs.package) }}
 
       - name: Upload Source Tarball 🗜️
         uses: actions/upload-artifact@v4
@@ -249,10 +249,6 @@ jobs:
           path: ${{ github.workspace }}/.ccache
           key: ${{ runner.os }}-${{ matrix.os }}-ccache-x86_64-${{ needs.check-event.outputs.config }}
 
-  # Windows is split in two: the compile runs on a hosted runner and hands its `cmake --install`
-  # output over as a temporary artifact; packaging (zips + MSIs) then runs either on the self-hosted
-  # runner that has the code-signing hardware token (pushes to this repo) or on a hosted runner
-  # without signing (pull requests, dispatches, schedules, forks).
   windows-build:
     name: Build for Windows 🪟
     runs-on: windows-2022
@@ -317,7 +313,7 @@ jobs:
         with:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
-          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+          package: true
 
       - name: Upload Main Artifact 📡
         uses: actions/upload-artifact@v4
