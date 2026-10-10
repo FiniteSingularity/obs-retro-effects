@@ -347,7 +347,6 @@ jobs:
       run:
         shell: pwsh
     env:
-      # Consumed by .github/scripts/utils.pwsh/Sign-WindowsFile.ps1 (never echoed to the log).
       SIGNING_KEY_PIN: ${{ secrets.SIGNING_KEY_PIN }}
       SIGNING_ORG: ${{ secrets.SIGNING_ORG }}
     steps:
@@ -379,7 +378,7 @@ jobs:
         with:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
-          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+          package: true
           signWindows: true
 
       - name: Upload Main Artifact 📡
