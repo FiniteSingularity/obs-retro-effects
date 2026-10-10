@@ -214,6 +214,7 @@ function(_check_dependencies)
       set(_obs_version ${version})
       set(_obs_destination "${destination}")
       list(APPEND CMAKE_PREFIX_PATH "${dependencies_dir}")
+      list(APPEND CMAKE_PREFIX_PATH "${dependencies_dir}/cmake") // OBS 30.0.0 for windows
     endif()
 
     message(STATUS "Setting up ${label} (${arch}) - done")
