@@ -34,50 +34,53 @@ if(ENABLE_QT)
   )
 endif()
 
-target_sources(${PROJECT_NAME} PRIVATE
+target_sources(
+  ${PROJECT_NAME}
+  PRIVATE
     src/base-filter.h
-	src/obs-retro-effects-filter.c
-	src/obs-retro-effects-plugin.c
-	src/obs-retro-effects-filter.h
-	src/obs-retro-effects.h
-	src/obs-utils.c
-	src/obs-utils.h
-	src/blur/bloom.c
-	src/blur/bloom.h
-	src/blur/blur.c
-	src/blur/blur.h
-	src/blur/gaussian-kernel.c
-	src/blur/gaussian-kernel.h
-	src/filters/analog-glitch.c
-	src/filters/analog-glitch.h
-	src/filters/bloom-f.c
-	src/filters/bloom-f.h
-	src/filters/cathode-boot.c
-	src/filters/cathode-boot.h
-	src/filters/chromatic-aberration.c
-	src/filters/chromatic-aberration.h
-	src/filters/crt.c
-	src/filters/crt.h
+    src/obs-retro-effects-filter.c
+    src/obs-retro-effects-plugin.c
+    src/obs-retro-effects-filter.h
+    src/obs-retro-effects.h
+    src/obs-utils.c
+    src/obs-utils.h
+    src/blur/bloom.c
+    src/blur/bloom.h
+    src/blur/blur.c
+    src/blur/blur.h
+    src/blur/gaussian-kernel.c
+    src/blur/gaussian-kernel.h
+    src/filters/analog-glitch.c
+    src/filters/analog-glitch.h
+    src/filters/bloom-f.c
+    src/filters/bloom-f.h
+    src/filters/cathode-boot.c
+    src/filters/cathode-boot.h
+    src/filters/chromatic-aberration.c
+    src/filters/chromatic-aberration.h
+    src/filters/crt.c
+    src/filters/crt.h
     src/filters/codec.c
-	src/filters/codec.h
-	src/filters/digital-glitch.c
-	src/filters/digital-glitch.h
-	src/filters/dither.c
-	src/filters/dither.h
-	src/filters/frame-skip.c
-	src/filters/frame-skip.h
-	src/filters/interlace.c
-	src/filters/interlace.h
-	src/filters/matrix-rain.c
-	src/filters/matrix-rain.h
-	src/filters/ntsc.c
-	src/filters/ntsc.h
-	src/filters/posterize.c
-	src/filters/posterize.h
-	src/filters/vhs.c
-	src/filters/vhs.h
-	src/filters/scan-lines.c
-	src/filters/scan-lines.h
-	src/version.h)
+    src/filters/codec.h
+    src/filters/digital-glitch.c
+    src/filters/digital-glitch.h
+    src/filters/dither.c
+    src/filters/dither.h
+    src/filters/frame-skip.c
+    src/filters/frame-skip.h
+    src/filters/interlace.c
+    src/filters/interlace.h
+    src/filters/matrix-rain.c
+    src/filters/matrix-rain.h
+    src/filters/ntsc.c
+    src/filters/ntsc.h
+    src/filters/posterize.c
+    src/filters/posterize.h
+    src/filters/vhs.c
+    src/filters/vhs.h
+    src/filters/scan-lines.c
+    src/filters/scan-lines.h
+    src/version.h
+)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
