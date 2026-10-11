@@ -297,6 +297,8 @@ void digital_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 {
 	digital_glitch_filter_data_t *filter = data->active_filter_data;
 	filter->local_time += seconds;
+	filter->local_time = filter->local_time > 80000.0f ? 0.0f : filter->local_time;
+	
 	if (data->base->width == 0u || data->base->height == 0u) {
 		return;
 	}

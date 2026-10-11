@@ -335,6 +335,7 @@ void analog_glitch_filter_video_tick(retro_effects_filter_data_t *data,
 {
 	analog_glitch_filter_data_t *filter = data->active_filter_data;
 	filter->time += seconds;
+	filter->time = filter->time > 80000.0f ? 0.0f : filter->time;
 }
 
 static void analog_glitch_load_effect(analog_glitch_filter_data_t *filter)
