@@ -1,0 +1,16 @@
+{
+    "display_name": "Retro Effects",
+    "id": "d6c0ba22-dd7e-45bf-9390-9ddf4487d175",
+    "version": "1.1.0",
+    "authors": ["FiniteSingularity"],
+    "name": "obs-retro-effects",
+    "description": "A collection of retro visual effects for OBS.",
+    "long_description": "A comprehensive collection of retro visual effects for OBS, including filters and shaders to give your streams a nostalgic look.",
+    "urls": {
+        "repository": "https://github.com/FiniteSingularity/obs-retro-effects",
+        "website": "https://f15y.com",
+        "support": "https://github.com/FiniteSingularity/obs-retro-effects/issues"
+    },
+    "has_banner": false,
+    "has_icon": false
+}
