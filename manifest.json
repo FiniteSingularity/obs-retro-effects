@@ -1,7 +1,7 @@
 {
     "display_name": "Retro Effects",
     "id": "d6c0ba22-dd7e-45bf-9390-9ddf4487d175",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "authors": ["FiniteSingularity"],
     "name": "obs-retro-effects",
     "description": "A collection of retro visual effects for OBS.",
