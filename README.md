@@ -24,6 +24,44 @@
 > **Note**
 > While we only release new versions of Retro Effects after testing it on local hardware, there are bugs and issues that will slip through. If you happen to run into any issues, please [open an issue](https://github.com/finitesingularity/obs-retro-effects/issues) and we will work to resolve it.
 
+## Fedora installation (native OBS)
+
+Build against Fedora's installed OBS libraries rather than using the Ubuntu
+release binary. These steps are for the RPM version of OBS, not Flatpak.
+Building and loading the plugin were verified on Fedora 44 x86_64 with OBS
+32.1.1 and GCC 16.2.1; visual rendering of individual effects was not tested.
+
+Install dependencies:
+
+```bash
+sudo dnf install git cmake ninja-build gcc gcc-c++ obs-studio-devel
+```
+
+From the root of this checkout, build:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+Close OBS, then install the binary and resources for the current user:
+
+```bash
+plugin_dir="${XDG_CONFIG_HOME:-$HOME/.config}/obs-studio/plugins/obs-retro-effects"
+mkdir -p "$plugin_dir/bin/64bit" "$plugin_dir/data"
+install -m 755 build/obs-retro-effects.so "$plugin_dir/bin/64bit/"
+cp -a data/. "$plugin_dir/data/"
+```
+
+This local installation does not require sudo. Restart OBS, open a source's
+**Filters**, and add an effect using the **+** button under **Effect Filters**.
+For troubleshooting, check **Help → Log Files → View Current Log** for
+`[Retro Effects] loaded version`. The source currently reports version 1.0.2.
+
+After updating the checkout or upgrading OBS, rerun the build and install steps.
+If you track OBS configuration in dotfiles, ignore `/plugins/` to keep compiled
+binaries and installed resources out of the repository.
+
 ## Introduction
 
 Retro Effects is an OBS plug-in that provides several filters to simulate retro hardware (e.g.- CRTs, NTSC Signals, etc...) giving your OBS sources an authentic retro look/feel. Retro effects provides the following filters.
